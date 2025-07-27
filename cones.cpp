@@ -1,10 +1,7 @@
 #ifndef CONES_PAPP_VARGA_H
 #define CONES_PAPP_VARGA_H
 #include <Eigen/Dense>
-#include <numeric>
-#include <memory>
 
-// gotta add a Cone virtual class
 template<typename RealScalar>
 class Cone{
     using Matrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
@@ -23,40 +20,7 @@ public:
     virtual Vector jacobian() const = 0;
     // this returns the hessian-vector product with v evaluated at the current point
     virtual Vector hvp(const Eigen::Ref<const Vector>&) const = 0;
-    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const;
-};
-
-// Right now this only supports real stuff
-template<typename RealScalar>
-class PositiveSemidefinite : public Cone<RealScalar>{
-    using Matrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
-    using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
-protected:
-    int matrix_size;
-    Matrix P, Pinv;
-public:
-    PositiveSemidefinite(int n) : matrix_size(n){
-        P = Matrix::Identity(matrix_size, matrix_size);
-        Pinv = P;
-        this->barrier_parameter = matrix_size;
-        this->num_params = matrix_size * matrix_size;
-    }
-    Vector point() const override{return P.template reshaped<Eigen::RowMajor>();}
-    void updatePoint(const Eigen::Ref<const Vector>& p) override{
-        P = p.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
-        Pinv = P.llt().solve(Matrix::Identity(matrix_size, matrix_size));
-    }
-    Vector jacobian() const override{return -Pinv.template reshaped<Eigen::RowMajor>();}
-    Vector hvp(const Eigen::Ref<const Vector>& v) const override{
-        Matrix V = v.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
-        Matrix hvp = Pinv * V * Pinv;
-        return hvp.template reshaped<Eigen::RowMajor>();
-    }
-    Vector ihvp(const Eigen::Ref<const Vector>& v) const override{
-        Matrix V = v.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
-        Matrix ihvp = P * V * P;
-        return ihvp.template reshaped<Eigen::RowMajor>();
-    }
+    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const = 0;
 };
 
 template<typename RealScalar>

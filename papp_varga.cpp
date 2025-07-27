@@ -1,10 +1,11 @@
 #include <iostream>
 #include <vector>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <unsupported/Eigen/MPRealSupport>
 #include "model.cpp"
 #include "solver.cpp"
 #include "cones.cpp"
+#include "possemidefinite.cpp"
 
 void mpfr_setup(){
     const int working_digits = 60;
@@ -19,6 +20,7 @@ int main(){
     using MatrixXmp = Eigen::Matrix<SOLVER_TYPE, Eigen::Dynamic, Eigen::Dynamic>;
     using VectorXmp = Eigen::Vector<SOLVER_TYPE, Eigen::Dynamic>;
     int n = 3, p = 0, d = 4;
+    // of the following, c is not allowed to be complex, the rest may be
     VectorXmp c(n), b(p), h(d);
     MatrixXmp A(p, n), G(d, n);
     c << 48, -8, 20;
@@ -27,11 +29,8 @@ int main(){
          -4, 0, 8,
          -4, 0, 8,
          0, 8, 2;
-    // c.setRandom();
-    // h.setRandom();
-    // G.setRandom();
     std::vector<std::unique_ptr<Cone<SOLVER_TYPE>>> cones;
-    PositiveSemidefinite<SOLVER_TYPE> cone1(2);
+    PositiveSemidefinite<SOLVER_TYPE, true> cone1(2);
     cones.emplace_back(std::make_unique<decltype(cone1)>(cone1));
     Model<SOLVER_TYPE> model(c, A, G, b, h, cones);
     Solver<SOLVER_TYPE> solver;

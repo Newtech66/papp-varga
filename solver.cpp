@@ -1,7 +1,7 @@
 #ifndef SOLVER_PAPP_VARGA_H
 #define SOLVER_PAPP_VARGA_H
 #include <string>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <mpreal.h>
 #include "model.cpp"
 #include "point.cpp"
@@ -152,7 +152,7 @@ void Solver<RealScalar>::adaptive_update_mu(Model<RealScalar>& model){
     // tau * kap^2 * tau = (kap * tau) ** 2
     n2 += (p.kap * p.tau) * (p.kap * p.tau);
     int barrier_parameter = 1 + model.cone().barrierParameter();
-    RealScalar a = RealScalar(barrier_parameter - 1 / 16);
+    RealScalar a = RealScalar(barrier_parameter) - RealScalar(1) / RealScalar(16);
     RealScalar b = p.z.dot(p.s) + p.tau * p.kap;
     mu = (b - std::sqrt(b * b - a * n2)) / a;
 }

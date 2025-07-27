@@ -1,8 +1,9 @@
 #ifndef MODEL_PAPP_VARGA_H
 #define MODEL_PAPP_VARGA_H
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "cones.cpp"
+#include "vectorization.cpp"
 
 template<typename RealScalar>
 class Model{
@@ -23,6 +24,7 @@ public:
           const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& G,
           const Eigen::Ref<const Vector>& b, const Eigen::Ref<const Vector>& h,
           std::vector<std::unique_ptr<Cone<RealScalar>>>& cones){
+            // I can be passed
             this->A = A;
             this->G = G;
             this->b = b;
