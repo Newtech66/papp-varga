@@ -4,9 +4,9 @@
 #include <type_traits>
 #include <Eigen/Core>
 #include "cones.cpp"
+#include "vectorize.cpp"
 
-// Right now this only supports real stuff
-template<typename RealScalar, bool IsComplex = false>
+template<typename RealScalar, bool IsComplex>
 class PositiveSemidefinite : public Cone<RealScalar>{
     // internally, Matrix and Vector types are used
     // externally, the argument and return types are RealMatrix and RealVector
@@ -20,28 +20,68 @@ protected:
     Matrix P, Pinv, I;
 public:
     PositiveSemidefinite(int n) : matrix_size(n){
-        I = Matrix::Identity(matrix_size, matrix_size);
-        P = I;
-        Pinv = I;
+        I.setIdentity(matrix_size);
+        P.setIdentity(matrix_size);
+        Pinv.setIdentity(matrix_size);
         this->barrier_parameter = matrix_size;
         if(IsComplex)   this->num_params = 2 * matrix_size * matrix_size;
         else    this->num_params = matrix_size * matrix_size;
     }
-    RealVector point() const override{return P.template reshaped<Eigen::RowMajor>();}
+    RealVector point() const override{
+        return Vectorize::vec<RealScalar>(P);
+    }
     void updatePoint(const Eigen::Ref<const RealVector>& p) override{
-        P = p.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
+        P = Vectorize::unvec<RealScalar, IsComplex>(p);
         Pinv = P.llt().solve(I);
     }
-    RealVector jacobian() const override{return -Pinv.template reshaped<Eigen::RowMajor>();}
+    RealVector jacobian() const override{
+        return -Vectorize::vec<RealScalar>(Pinv);
+    }
     RealVector hvp(const Eigen::Ref<const RealVector>& v) const override{
-        Matrix V = v.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
+        Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
         Matrix hvp = Pinv * V * Pinv;
-        return hvp.template reshaped<Eigen::RowMajor>();
+        return Vectorize::vec<RealScalar>(hvp);
     }
     RealVector ihvp(const Eigen::Ref<const RealVector>& v) const override{
-        Matrix V = v.template reshaped<Eigen::RowMajor>(matrix_size, matrix_size);
+        Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
         Matrix ihvp = P * V * P;
-        return ihvp.template reshaped<Eigen::RowMajor>();
+        return Vectorize::vec<RealScalar>(ihvp);
+    }
+};
+
+template<typename RealScalar>
+class DiagonalPositiveSemidefinite : public Cone<RealScalar>{
+    using Matrix = Eigen::DiagonalMatrix<RealScalar, Eigen::Dynamic>;
+    using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
+protected:
+    int matrix_size;
+    Matrix P, Pinv;
+public:
+    PositiveSemidefinite(int n) : matrix_size(n){
+        P.setIdentity(matrix_size);
+        Pinv.setIdentity(matrix_size);
+        this->barrier_parameter = matrix_size;
+        this->num_params = matrix_size;
+    }
+    Vector point() const override{
+        return P.diagonal();
+    }
+    void updatePoint(const Eigen::Ref<const Vector>& p) override{
+        P = p.asDiagonal();
+        Pinv = P.inverse();
+    }
+    Vector jacobian() const override{
+        return -Pinv.diagonal();
+    }
+    Vector hvp(const Eigen::Ref<const Vector>& v) const override{
+        Matrix V = v.asDiagonal();
+        Matrix hvp = Pinv * V * Pinv;
+        return hvp.diagonal();
+    }
+    Vector ihvp(const Eigen::Ref<const Vector>& v) const override{
+        Matrix V = v.asDiagonal();
+        Matrix ihvp = P * V * P;
+        return ihvp.diagonal();
     }
 };
 

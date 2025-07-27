@@ -30,7 +30,7 @@ int main(){
          -4, 0, 8,
          0, 8, 2;
     std::vector<std::unique_ptr<Cone<SOLVER_TYPE>>> cones;
-    PositiveSemidefinite<SOLVER_TYPE, true> cone1(2);
+    PositiveSemidefinite<SOLVER_TYPE, false> cone1(2);
     cones.emplace_back(std::make_unique<decltype(cone1)>(cone1));
     Model<SOLVER_TYPE> model(c, A, G, b, h, cones);
     Solver<SOLVER_TYPE> solver;

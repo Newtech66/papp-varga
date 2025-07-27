@@ -13,25 +13,16 @@ void mpfr_setup(){
 using MatrixXmp = Eigen::Matrix<std::complex<mpfr::mpreal>, Eigen::Dynamic, Eigen::Dynamic>;
 using VectorXmp = Eigen::Vector<std::complex<mpfr::mpreal>, Eigen::Dynamic>;
 
+VectorXmp func(const Eigen::Ref<const Eigen::Vector<mpfr::mpreal, Eigen::Dynamic>>& x){
+    VectorXmp v(2);
+    v.real() = x.head(2);
+    v.imag() = x.tail(2);
+    return v;
+}
+
 int main() {
     mpfr_setup();
-    MatrixXmp m(2, 2);
-    VectorXmp v(2, 1);
-    // m << 0.9542468245, 1, 1, -2.095893797;
-    // v << -0.04359609171, 0.09589379665;
-    m.setRandom();
-    v.setRandom();
-    // std::cout << "LLT solve:" << std::endl;
-    // std::cout << m.llt().solve(v) << std::endl;
-    std::cout << "m:" << std::endl;
-    std::cout << m << std::endl; 
-    std::cout << "m inverse:" << std::endl;
-    MatrixXmp minv = m.colPivHouseholderQr().solve(MatrixXmp::Identity(2, 2));
-    std::cout << minv << std::endl;
-    std::cout << "m * minv:" << std::endl;
-    std::cout << m * minv << std::endl;
-    std::cout << "QR solve:" << std::endl;
-    std::cout << m.colPivHouseholderQr().solve(v) << std::endl;
-    std::cout << "minv * v:" << std::endl;
-    std::cout << minv * v << std::endl;
+    Eigen::Vector<mpfr::mpreal, Eigen::Dynamic> x(4);
+    x.setRandom();
+    func(x);
 }

@@ -3,7 +3,6 @@
 #include <iostream>
 #include <Eigen/Core>
 #include "cones.cpp"
-#include "vectorization.cpp"
 
 template<typename RealScalar>
 class Model{
