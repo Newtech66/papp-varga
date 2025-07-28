@@ -1,6 +1,6 @@
 #ifndef POINT_PAPP_VARGA_H
 #define POINT_PAPP_VARGA_H
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 template<typename RealScalar>
 struct PointXYS{

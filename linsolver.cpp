@@ -1,11 +1,9 @@
 #ifndef LINSOLVER_PAPP_VARGA_H
 #define LINSOLVER_PAPP_VARGA_H
-#include <iostream>
-#include <Eigen/Core>
 #include <Eigen/Cholesky>
 #include <Eigen/QR>
-#include "point.cpp"
 #include "model.cpp"
+#include "point.cpp"
 
 template<typename RealScalar>
 class LinearSolver{
@@ -75,16 +73,14 @@ public:
         E = - q.x.dot(b2.x) - q.y.dot(b2.y) + mu * hvpqz.dot(b2.s) + q.tau;
         F = - q.x.dot(b3.x) - q.y.dot(b3.y) + mu * hvpqz.dot(b3.s);
         // assemble 2 x 2 matrix and solve
-        Eigen::Matrix<RealScalar, 2, 2> mat;
-        Eigen::Vector<RealScalar, 2> con;
-        mat << B, C, E, F;
-        con << -A, -D;
+        Eigen::Matrix<RealScalar, 2, 2> mat{{B, C}, {E, F}};
+        Eigen::Vector<RealScalar, 2> con{-A, -D};
         // Cholesky solve doesn't work here because mat is not positive-semidefinite
         // You cannot just throw Cholesky at everything
         // TODO: Are the previous instances of Cholesky (LLT) solve valid?
         Eigen::Vector<RealScalar, 2> result = mat.colPivHouseholderQr().solve(con);
-        d.tau = result(0, 0);
-        d.theta = result(1, 0);
+        d.tau = result(0);
+        d.theta = result(1);
         // can set dx, dy, ds now
         d.x = b1.x - d.tau * b2.x - d.theta * b3.x;
         d.y = b1.y - d.tau * b2.y - d.theta * b3.y;

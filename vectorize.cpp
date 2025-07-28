@@ -8,8 +8,7 @@ namespace Vectorize{
     template<typename RealScalar>
     Eigen::Vector<RealScalar, Eigen::Dynamic> split(const Eigen::Ref<const Eigen::Vector<std::complex<RealScalar>, Eigen::Dynamic>>& x){
         Eigen::Vector<RealScalar, Eigen::Dynamic> v(2 * x.size());
-        v.head(x.size()) = x.real();
-        v.tail(x.size()) = x.imag();
+        v << x.real(), x.imag();
         return v;
     }
 
@@ -38,7 +37,7 @@ namespace Vectorize{
 
     template<typename Scalar>
     Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> _internal_unvec(const Eigen::Ref<const Eigen::Vector<Scalar, Eigen::Dynamic>>& x){
-        int n = std::lround<int>(x.size());
+        int n = std::lround<int>(std::sqrt(x.size()));
         return x.template reshaped<Eigen::RowMajor>(n, n);
     }
 

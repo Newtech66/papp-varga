@@ -1,7 +1,5 @@
 #ifndef MODEL_PAPP_VARGA_H
 #define MODEL_PAPP_VARGA_H
-#include <iostream>
-#include <Eigen/Core>
 #include "cones.cpp"
 
 template<typename RealScalar>
@@ -20,10 +18,9 @@ public:
     Vector b, h, c;
     int n, p, d;
     Model(const Eigen::Ref<const Vector>& c,
-          const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& G,
-          const Eigen::Ref<const Vector>& b, const Eigen::Ref<const Vector>& h,
+          const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Vector>& b,
+          const Eigen::Ref<const Matrix>& G, const Eigen::Ref<const Vector>& h,
           std::vector<std::unique_ptr<Cone<RealScalar>>>& cones){
-            // I can be passed
             this->A = A;
             this->G = G;
             this->b = b;
@@ -53,6 +50,7 @@ void Model<RealScalar>::print_model() const{
     std::cout << h << std::endl;
     std::cout << "c =" << std::endl;
     std::cout << c << std::endl;
+    std::cout << "-------------------" << std::endl;
 }
 
 #endif

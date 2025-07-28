@@ -96,7 +96,7 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     mu = RealScalar(1);
     LinearSolver solver(model);
     steps_taken = 0;
-    while(p.s.transpose() * p.z + p.tau * p.kap > tol_gap){
+    while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
             break;

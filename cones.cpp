@@ -1,7 +1,6 @@
 #ifndef CONES_PAPP_VARGA_H
 #define CONES_PAPP_VARGA_H
-#include <Eigen/Dense>
-#include "misc_exceptions.cpp"
+#include <Eigen/Core>
 
 template<typename RealScalar>
 class Cone{
@@ -10,6 +9,7 @@ class Cone{
 protected:
     int barrier_parameter;
     int num_params;
+    inline static const std::string cone_name;
 public:
     int barrierParameter(){return barrier_parameter;}
     int numParams(){return num_params;}
@@ -21,7 +21,10 @@ public:
     virtual Vector jacobian() const = 0;
     // this returns the hessian-vector product with v evaluated at the current point
     virtual Vector hvp(const Eigen::Ref<const Vector>&) const = 0;
-    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const{throw NotImplemented();}
+    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const{
+        const std::string error_message = "Inverse Hessian-vector product is not implemented for " + cone_name;
+        throw std::logic_error(error_message.data());
+    }
 };
 
 template<typename RealScalar>

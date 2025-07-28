@@ -1,10 +1,7 @@
 #ifndef POSSEMIDEFINITE_PAPP_VARGA_H
 #define POSSEMIDEFINITE_PAPP_VARGA_H
-#include <complex>
-#include <type_traits>
-#include <Eigen/Core>
-#include "cones.cpp"
 #include "vectorize.cpp"
+#include "cones.cpp"
 
 template<typename RealScalar, bool IsComplex>
 class PositiveSemidefinite : public Cone<RealScalar>{
@@ -16,13 +13,14 @@ class PositiveSemidefinite : public Cone<RealScalar>{
     using RealMatrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
     using RealVector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 protected:
+    inline static const std::string cone_name{"Positive Semidefinite Cone"};
     int matrix_size;
     Matrix P, Pinv, I;
 public:
-    PositiveSemidefinite(int n) : matrix_size(n){
-        I.setIdentity(matrix_size);
-        P.setIdentity(matrix_size);
-        Pinv.setIdentity(matrix_size);
+    PositiveSemidefinite(const int n) : matrix_size(n){
+        I.setIdentity(matrix_size, matrix_size);
+        P.setIdentity(matrix_size, matrix_size);
+        Pinv.setIdentity(matrix_size, matrix_size);
         this->barrier_parameter = matrix_size;
         if(IsComplex)   this->num_params = 2 * matrix_size * matrix_size;
         else    this->num_params = matrix_size * matrix_size;
@@ -54,10 +52,11 @@ class DiagonalPositiveSemidefinite : public Cone<RealScalar>{
     using Matrix = Eigen::DiagonalMatrix<RealScalar, Eigen::Dynamic>;
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 protected:
+    inline static const std::string cone_name{"Diagonal Positive Semidefinite Cone"};
     int matrix_size;
     Matrix P, Pinv;
 public:
-    PositiveSemidefinite(int n) : matrix_size(n){
+    DiagonalPositiveSemidefinite(const int n) : matrix_size(n){
         P.setIdentity(matrix_size);
         Pinv.setIdentity(matrix_size);
         this->barrier_parameter = matrix_size;

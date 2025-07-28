@@ -87,7 +87,7 @@ vec(A_1) & \cdots & vec(A_n)
 \end{gather*}
 $$
 
-## Input format (not yet implemented)
+## Input format
 
 The input format of a file is given below. `<(type) name: description>` gives the type and description of a particular input. Anything outside `<...>` is a comment and is not part of the input specification.
 
@@ -112,8 +112,9 @@ The input format of a file is given below. `<(type) name: description>` gives th
 
 The list of supported cones and the respective cone parameters are given below. The left hand side of an equality is the format of the cone specification. The right hand side is the cone description. Anything in `[...]` is optional.
 
-- `PSD n [COMPLEX] = Cone of symmetric (Hermitian) n x n positive semidefinite matrices`
-- **(UNTESTED)** `DIAGPSD n = Cone of diagonal n x n positive semidefinite matrices`
+- `REALPSD n = Cone of symmetric n x n positive semidefinite matrices`
+- `COMPLEXPSD n = Cone of Hermitian n x n positive semidefinite matrices`
+- `DIAGONALPSD n = Cone of diagonal n x n positive semidefinite matrices`
 - **(NOT YET IMPLEMENTED)** `LOGPERSPECEPI n [COMPLEX] = Cone of symmetric (Hermitian) n x n positive semidefinite matrices (T, X, Y) satisfying`
 
 $$
