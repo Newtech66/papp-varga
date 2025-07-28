@@ -13,16 +13,12 @@ void mpfr_setup(){
 using MatrixXmp = Eigen::Matrix<std::complex<mpfr::mpreal>, Eigen::Dynamic, Eigen::Dynamic>;
 using VectorXmp = Eigen::Vector<std::complex<mpfr::mpreal>, Eigen::Dynamic>;
 
-VectorXmp func(const Eigen::Ref<const Eigen::Vector<mpfr::mpreal, Eigen::Dynamic>>& x){
-    VectorXmp v(2);
-    v.real() = x.head(2);
-    v.imag() = x.tail(2);
-    return v;
-}
-
 int main() {
     mpfr_setup();
-    Eigen::Vector<mpfr::mpreal, Eigen::Dynamic> x(4);
-    x.setRandom();
-    func(x);
+    int n = 5;
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M(n, n);
+    M.setRandom();
+    std::cout << "M:\n" << M << std::endl;
+    M = M.selfadjointView<Eigen::Upper>();
+    std::cout << "M symmetric:\n" << M << std::endl;
 }
