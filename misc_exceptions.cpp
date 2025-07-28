@@ -1,0 +1,11 @@
+#ifndef MISC_EXCEPTIONS_PAPP_VARGA_H
+#define MISC_EXCEPTIONS_PAPP_VARGA_H
+#include <stdexcept>
+
+// https://stackoverflow.com/questions/24469927/does-c-have-an-equivalent-to-nets-notimplementedexception
+class NotImplemented : public std::logic_error{
+public:
+    NotImplemented() : std::logic_error("Function not yet implemented") { };
+};
+
+#endif

@@ -117,7 +117,7 @@ The list of supported cones and the respective cone parameters are given below. 
 - **(NOT YET IMPLEMENTED)** `LOGPERSPECEPI n [COMPLEX] = Cone of symmetric (Hermitian) n x n positive semidefinite matrices (T, X, Y) satisfying`
 
 $$
-T \succeq X^{\frac{1}{2}}\log{(X^{\frac{1}{2}}YX^{\frac{1}{2}})}X^{\frac{1}{2}}
+T \succeq X^{\frac{1}{2}}\log{(X^{\frac{1}{2}}Y^{-1}X^{\frac{1}{2}})}X^{\frac{1}{2}}
 $$
 
 ## Build information:

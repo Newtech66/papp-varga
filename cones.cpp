@@ -1,6 +1,7 @@
 #ifndef CONES_PAPP_VARGA_H
 #define CONES_PAPP_VARGA_H
 #include <Eigen/Dense>
+#include "misc_exceptions.cpp"
 
 template<typename RealScalar>
 class Cone{
@@ -20,7 +21,7 @@ public:
     virtual Vector jacobian() const = 0;
     // this returns the hessian-vector product with v evaluated at the current point
     virtual Vector hvp(const Eigen::Ref<const Vector>&) const = 0;
-    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const = 0;
+    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const{throw NotImplemented();}
 };
 
 template<typename RealScalar>
