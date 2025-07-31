@@ -112,10 +112,10 @@ The input format of a file is given below. `<(type) name: description>` gives th
 
 The list of supported cones and the respective cone parameters are given below. The left hand side of an equality is the format of the cone specification. The right hand side is the cone description. Anything in `[...]` is optional.
 
-- `REALPSD n = Cone of symmetric n x n positive semidefinite matrices`
-- `COMPLEXPSD n = Cone of Hermitian n x n positive semidefinite matrices`
+- `REALPSD/COMPLEXPSD n = Cone of symmetric/Hermitian n x n positive semidefinite matrices`
+- ` n = Cone of Hermitian n x n positive semidefinite matrices`
 - `DIAGONALPSD n = Cone of diagonal n x n positive semidefinite matrices`
-- **(NOT YET IMPLEMENTED)** `LOGPERSPECEPI n [COMPLEX] = Cone of symmetric (Hermitian) n x n positive semidefinite matrices (T, X, Y) satisfying`
+- `REALLOGPERSPECEPI/COMPLEXLOGPERSPECEPI n = Cone of symmetric/Hermitian n x n positive semidefinite matrices (T, X, Y) satisfying`
 
 $$
 T \succeq X^{\frac{1}{2}}\log{(X^{\frac{1}{2}}Y^{-1}X^{\frac{1}{2}})}X^{\frac{1}{2}}

@@ -20,8 +20,8 @@ public:
     // this returns the gradient evaluated at the current point
     virtual Vector jacobian() const = 0;
     // this returns the hessian-vector product with v evaluated at the current point
-    virtual Vector hvp(const Eigen::Ref<const Vector>&) const = 0;
-    virtual Vector ihvp(const Eigen::Ref<const Vector>&) const{
+    virtual Vector hvp(const Eigen::Ref<const Vector>&) = 0;
+    virtual Vector ihvp(const Eigen::Ref<const Vector>&){
         const std::string error_message = "Inverse Hessian-vector product is not implemented for " + cone_name;
         throw std::logic_error(error_message.data());
     }
@@ -68,7 +68,7 @@ public:
         }    
     }
     Vector jacobian() const override{return jac;}
-    Vector hvp(const Eigen::Ref<const Vector>& v) const override{
+    Vector hvp(const Eigen::Ref<const Vector>& v) override{
         // perform the hessian-vector product for each segment
         Vector hvp = Vector::Zero(this->num_params);
         int cpos = 0;
@@ -78,7 +78,7 @@ public:
         }
         return hvp;
     }
-    Vector ihvp(const Eigen::Ref<const Vector>& v) const override{
+    Vector ihvp(const Eigen::Ref<const Vector>& v) override{
         // perform the hessian-vector product for each segment
         Vector ihvp = Vector::Zero(this->num_params);
         int cpos = 0;

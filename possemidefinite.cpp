@@ -6,11 +6,10 @@
 template<typename RealScalar, bool IsComplex>
 class PositiveSemidefinite : public Cone<RealScalar>{
     // internally, Matrix and Vector types are used
-    // externally, the argument and return types are RealMatrix and RealVector
+    // externally, the argument and return type is RealVector
     using MType = typename std::conditional<IsComplex, std::complex<RealScalar>, RealScalar>::type;
     using Matrix = Eigen::Matrix<MType, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Vector<MType, Eigen::Dynamic>;
-    using RealMatrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
     using RealVector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 protected:
     inline static const std::string cone_name{"Positive Semidefinite Cone"};
@@ -35,12 +34,12 @@ public:
     RealVector jacobian() const override{
         return -Vectorize::vec<RealScalar>(Pinv);
     }
-    RealVector hvp(const Eigen::Ref<const RealVector>& v) const override{
+    RealVector hvp(const Eigen::Ref<const RealVector>& v) override{
         Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
         Matrix hvp = Pinv * V * Pinv;
         return Vectorize::vec<RealScalar>(hvp);
     }
-    RealVector ihvp(const Eigen::Ref<const RealVector>& v) const override{
+    RealVector ihvp(const Eigen::Ref<const RealVector>& v) override{
         Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
         Matrix ihvp = P * V * P;
         return Vectorize::vec<RealScalar>(ihvp);
@@ -72,12 +71,12 @@ public:
     Vector jacobian() const override{
         return -Pinv.diagonal();
     }
-    Vector hvp(const Eigen::Ref<const Vector>& v) const override{
+    Vector hvp(const Eigen::Ref<const Vector>& v) override{
         Matrix V = v.asDiagonal();
         Matrix hvp = Pinv * V * Pinv;
         return hvp.diagonal();
     }
-    Vector ihvp(const Eigen::Ref<const Vector>& v) const override{
+    Vector ihvp(const Eigen::Ref<const Vector>& v) override{
         Matrix V = v.asDiagonal();
         Matrix ihvp = P * V * P;
         return ihvp.diagonal();

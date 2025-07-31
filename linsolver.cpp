@@ -10,7 +10,7 @@ class LinearSolver{
     using Matrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 private:
-    Eigen::LLT<Matrix> llt;
+    Eigen::LLT<Matrix> llt, llt2;
     Point<RealScalar> d;
     Matrix At, Gt, I;
     PointXYS<RealScalar> b1, b2, b3, rhs;
@@ -36,15 +36,15 @@ public:
             }
         }
         // std::cout << "Determinant of GtHG = " << GtHG.determinant() << std::endl;
-        Matrix GtHGinv = GtHG.llt().solve(I);
-        Matrix AGtHGinv = model.A * GtHGinv;
+        llt2.compute(GtHG);
+        Matrix AGtHGinv = llt2.solve(At).transpose();
         Matrix AGtHGinvAt = AGtHGinv * At;
         Vector bx_minus_muGtHbz;
         llt.compute(AGtHGinvAt);
         // Part 1: the constant part
         rhs.x = Gt * (p.z + mu * g);
         b1.y = llt.solve(AGtHGinv * rhs.x);
-        b1.x = GtHGinv * (rhs.x - At * b1.y) / mu;
+        b1.x = llt2.solve(rhs.x - At * b1.y) / mu;
         b1.s = - model.G * b1.x;
         // Part 2: the part proportional to dtau
         rhs.x = model.c;
@@ -52,7 +52,7 @@ public:
         rhs.s = model.h;
         bx_minus_muGtHbz = rhs.x - mu * Gt * model.cone().hvp(rhs.s);
         b2.y = llt.solve(AGtHGinv * bx_minus_muGtHbz + mu * rhs.y);
-        b2.x = GtHGinv * (bx_minus_muGtHbz - At * b2.y) / mu;
+        b2.x = llt2.solve(bx_minus_muGtHbz - At * b2.y) / mu;
         b2.s = -(rhs.s + model.G * b2.x);
         // Part 3: the part proportional to dtheta
         rhs.x = q.x;
@@ -60,7 +60,7 @@ public:
         rhs.s = q.z;
         bx_minus_muGtHbz = rhs.x - mu * Gt * model.cone().hvp(rhs.s);
         b3.y = llt.solve(AGtHGinv * bx_minus_muGtHbz + mu * rhs.y);
-        b3.x = GtHGinv * (bx_minus_muGtHbz - At * b3.y) / mu;
+        b3.x = llt2.solve(bx_minus_muGtHbz - At * b3.y) / mu;
         b3.s = -(rhs.s + model.G * b3.x);
         // now we solve for dtau and dtheta
         RealScalar A, B, C, D, E, F;

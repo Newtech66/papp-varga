@@ -6,6 +6,7 @@
 #include <unsupported/Eigen/MPRealSupport>
 #include "model.cpp"
 #include "possemidefinite.cpp"
+#include "logperspecepi.cpp"
 
 template<typename T>
 std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_size){
@@ -19,6 +20,13 @@ std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_s
         using cone = DiagonalPositiveSemidefinite<T>;
         return std::make_unique<cone>(cone(cone_size));
     }
+    // }else if(cone_name == "REALLOGPERSPECEPI"){
+    //     using cone = LogPerspecEpi<T, false>;
+    //     return std::make_unique<cone>(cone(cone_size));
+    // }else if(cone_name == "COMPLEXLOGPERSPECEPI"){
+    //     using cone = LogPerspecEpi<T, true>;
+    //     return std::make_unique<cone>(cone(cone_size));
+    // }
     const std::string error_message = cone_name + " is an unsupported cone type!";
     throw std::logic_error(error_message);
 }
@@ -66,6 +74,14 @@ Model<T> reader(const std::filesystem::path& input_filepath){
     }
     for(int i = 0; i < d; ++i){
         input_file >> h(i);
+    }
+    // attempt error check
+    if(input_file.eof()){
+        throw std::logic_error("Unexpected end of file!");
+    }
+    std::string e;
+    while(input_file >> e){
+        throw std::logic_error("More data in file than expected!");
     }
     return Model<T>(c, A, b, G, h, cones);
 }

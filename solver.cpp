@@ -96,6 +96,10 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     mu = RealScalar(1);
     LinearSolver solver(model);
     steps_taken = 0;
+    // Iteration | primal | dual | tau | kap
+    const int width = 30;
+    std::cout << "Iteration" << std::setw(width) << "Primal" << std::setw(width) << "Dual" << std::setw(width) << "tau" << std::setw(width) << "kap";
+    std::cout << std::endl;
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
@@ -119,6 +123,8 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
             break;
         }
         ++steps_taken;
+    std::cout << steps_taken << std::setw(width) << model.c.dot(p.x) / p.tau << std::setw(width) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau << std::setw(width) << p.tau << std::setw(width) << p.kap;
+    std::cout << std::endl;
     }
     std::cout << "Iterations taken = " << steps_taken << std::endl;
     std::cout << "Solver status: ";
