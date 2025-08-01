@@ -22,7 +22,7 @@ namespace Vectorize{
 
     template<typename Scalar>
     Eigen::Vector<Scalar, Eigen::Dynamic> _internal_vec(const Eigen::Ref<const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>>& X){
-        return X.template reshaped<Eigen::RowMajor>();
+        return X.template reshaped();
     }
 
     template<typename RealScalar>
@@ -38,7 +38,7 @@ namespace Vectorize{
     template<typename Scalar>
     Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> _internal_unvec(const Eigen::Ref<const Eigen::Vector<Scalar, Eigen::Dynamic>>& x){
         int n = std::lround<int>(std::sqrt(x.size()));
-        return x.template reshaped<Eigen::RowMajor>(n, n);
+        return x.template reshaped(n, n);
     }
 
     template<typename RealScalar, bool IsComplex, std::enable_if_t<IsComplex, bool> = true>

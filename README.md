@@ -124,3 +124,7 @@ $$
 ## Build information:
 
 This solver works with arbitrary precision numbers. You need GMP, Eigen, MPFR C++ to build this.
+
+## How to use:
+
+`papp_varga path/to/input/file`

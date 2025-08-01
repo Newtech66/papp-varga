@@ -20,7 +20,7 @@ std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_s
         using cone = DiagonalPositiveSemidefinite<T>;
         return std::make_unique<cone>(cone(cone_size));
     }
-    // }else if(cone_name == "REALLOGPERSPECEPI"){
+    // else if(cone_name == "REALLOGPERSPECEPI"){
     //     using cone = LogPerspecEpi<T, false>;
     //     return std::make_unique<cone>(cone(cone_size));
     // }else if(cone_name == "COMPLEXLOGPERSPECEPI"){

@@ -40,16 +40,9 @@ void Model<RealScalar>::print_model() const{
     std::cout << "-------------------" << std::endl;
     std::cout << "Model parameters:" << std::endl;
     std::cout << "-------------------" << std::endl;
-    std::cout << "A =" << std::endl;
-    std::cout << A << std::endl;
-    std::cout << "G =" << std::endl;
-    std::cout << G << std::endl;
-    std::cout << "b =" << std::endl;
-    std::cout << b << std::endl;
-    std::cout << "h =" << std::endl;
-    std::cout << h << std::endl;
-    std::cout << "c =" << std::endl;
-    std::cout << c << std::endl;
+    std::cout << "Number of primal variables = " << n << std::endl;
+    std::cout << "Number of linear constraints = " << p << std::endl;
+    std::cout << "Number of conic variables = " << d << std::endl;
     std::cout << "-------------------" << std::endl;
 }
 

@@ -7,7 +7,7 @@ template<typename RealScalar, bool IsComplex>
 class PositiveSemidefinite : public Cone<RealScalar>{
     // internally, Matrix and Vector types are used
     // externally, the argument and return type is RealVector
-    using MType = typename std::conditional<IsComplex, std::complex<RealScalar>, RealScalar>::type;
+    using MType = typename std::conditional_t<IsComplex, std::complex<RealScalar>, RealScalar>;
     using Matrix = Eigen::Matrix<MType, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Vector<MType, Eigen::Dynamic>;
     using RealVector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
@@ -36,13 +36,11 @@ public:
     }
     RealVector hvp(const Eigen::Ref<const RealVector>& v) override{
         Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
-        Matrix hvp = Pinv * V * Pinv;
-        return Vectorize::vec<RealScalar>(hvp);
+        return Vectorize::vec<RealScalar>(Pinv * V * Pinv);
     }
     RealVector ihvp(const Eigen::Ref<const RealVector>& v) override{
         Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
-        Matrix ihvp = P * V * P;
-        return Vectorize::vec<RealScalar>(ihvp);
+        return Vectorize::vec<RealScalar>(P * V * P);
     }
 };
 
