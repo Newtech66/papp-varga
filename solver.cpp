@@ -3,6 +3,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <boost/math/tools/roots.hpp>
 #include <Eigen/Core>
 #include <mpreal.h>
 #include "model.cpp"
@@ -17,11 +18,12 @@ private:
     Point<RealScalar> p, dp, q;
     RealScalar mu, nu;
     int steps_taken;
-    std::vector<RealScalar> alpha_sched;
+    const std::uintmax_t max_iter = 10;
+    boost::math::tools::eps_tolerance<RealScalar> tcond = boost::math::tools::eps_tolerance<RealScalar>();
     void set_init_point(Model<RealScalar>& model);
     void adaptive_update_mu(Model<RealScalar>& model);
     void print_header() const;
-    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double, std::milli>&) const;
+    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&) const;
     // unused
     void calc_nu(Model<RealScalar>& model);
     RealScalar calc_iterate_norm(Model<RealScalar>& model, const RealScalar& mu);
@@ -39,11 +41,11 @@ void Solver<RealScalar>::print_header() const{
     std::cout << std::left << std::setw(14) << "kap";
     std::cout << std::left << std::setw(14) << "mu";
     std::cout << std::left << std::setw(8)  << "istep";
-    std::cout << std::left << std::setw(10) << "time (ms)";
+    std::cout << std::left << std::setw(10) << "time (s)";
     std::cout << std::endl;
 }
 template<typename RealScalar>
-void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double, std::milli>& step_time) const{
+void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double>& step_time) const{
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
@@ -61,8 +63,16 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
     set_init_point(model);
     mu = RealScalar(1);
-    calc_nu(model);
-    LinearSolver solver(model);
+    LinearSolver solver(model, q);
+    auto neighbourhood_check = [&](RealScalar c){
+        dp = solver.solve_ns(model, p, q, c * mu);
+        p += dp;
+        model.cone().updatePoint(p.s);
+        RealScalar diff = c * mu / RealScalar(4) - calc_iterate_norm(model, c * mu);
+        p -= dp;
+        model.cone().updatePoint(p.s);
+        return diff;
+    };
     steps_taken = 0;
     print_header();
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
@@ -70,74 +80,20 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
             std::cout << "Exiting because max iterations were reached" << std::endl;
             break;
         }
-        // adaptive update
-        // auto solve_start = std::chrono::high_resolution_clock::now();
-        // dp = solver.solve_ns(model, p, q, mu);
-        // p += dp;
-        // model.cone().updatePoint(p.s);
-        // adaptive_update_mu(model);
-        // auto solve_end = std::chrono::high_resolution_clock::now();
         //largest update
+        std::uintmax_t istep = max_iter;
         auto solve_start = std::chrono::high_resolution_clock::now();
-        int istep = 0;
-        mu *= RealScalar(1) - nu;
-        while(istep < alpha_sched.size()){
-            RealScalar nextmu = mu * alpha_sched[istep];
-            dp = solver.solve_ns(model, p, q, nextmu);
-            p += dp;
-            model.cone().updatePoint(p.s);
-            // check in neighbourhood
-            if(calc_iterate_norm(model, nextmu) > nextmu / RealScalar(4)){
-                p -= dp;
-                model.cone().updatePoint(p.s);
-                break;
-            }
-            p -= dp;
-            model.cone().updatePoint(p.s);
-            ++istep;
-        }
-        mu *= alpha_sched[istep - 1];
+        auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
+        mu *= hic;
         dp = solver.solve_ns(model, p, q, mu);
         p += dp;
         model.cone().updatePoint(p.s);
-        // int istep = 0;
-        // RealScalar lo = 0.9, hi = 1.0, mid, res = 1.0;
-        // mu *= RealScalar(1) - nu;
-        // while(istep < 10){
-        //     mid = (lo + hi) / RealScalar(2);
-        //     dp = solver.solve_ns(model, p, q, mu * mid);
-        //     p += dp;
-        //     model.cone().updatePoint(p.s);
-        //     // check in neighbourhood
-        //     if(mu * mid / RealScalar(4) < calc_iterate_norm(model, mu * mid))   lo = mid;
-        //     else   hi = res = mid;
-        //     p -= dp;
-        //     model.cone().updatePoint(p.s);
-        //     ++istep;
-        // }
-        // mu *= res;
-        // dp = solver.solve_ns(model, p, q, mu);
-        // p += dp;
-        // model.cone().updatePoint(p.s);
         auto solve_end = std::chrono::high_resolution_clock::now();
         ++steps_taken;
         print_row(model, istep, solve_end - solve_start);
     }
     std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
-    // std::cout << "Solver status: ";
-    // if(p.tau < tol_fail and p.kap < tol_fail)   std::cout << "UNKNOWN (tau = 0, kap = 0)";
-    // else if(p.kap > tol_fail and p.tau > tol_fail)  std::cout << "UNKNOWN (tau > 0, kap > 0)";
-    // else if(p.kap > tol_fail){
-    //     bool pinfeas = model.h.dot(p.z) + model.b.dot(p.y) < RealScalar(0);
-    //     bool dinfeas = model.c.dot(p.x) < RealScalar(0);
-    //     if(pinfeas and dinfeas) std::cout << "PRIMAL_DUAL_INFEASIBLE";
-    //     else if(pinfeas) std::cout << "PRIMAL_INFEASIBLE";
-    //     else if(dinfeas) std::cout << "DUAL_INFEASIBLE";
-    //     else    std::cout << "INFEASIBLE";
-    // }else if(p.tau > tol_fail)  std::cout << "OPTIMAL";
-    // else   std::cout << "UNEXPECTED";
-    // std::cout << std::endl;
     return p;
 }
 
@@ -191,8 +147,6 @@ void Solver<RealScalar>::set_init_point(Model<RealScalar>& model){
     q.z = - model.h + p.s;
     q.tau = model.h.dot(p.z) + RealScalar(1);
     calc_nu(model);
-    alpha_sched = {1.0, 0.9, 0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.01, 0.001};
-    // alpha_sched = {1.0, 0.99, 0.98, 0.97, 0.96};
 }
 
 // unused
