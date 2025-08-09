@@ -18,7 +18,7 @@ public:
     // this updates the current point
     virtual void updatePoint(const Eigen::Ref<const Vector>&) = 0;
     // this returns the gradient evaluated at the current point
-    virtual Vector jacobian() const = 0;
+    virtual Vector jacobian() = 0;
     // this returns the hessian-vector product with v evaluated at the current point
     virtual Vector hvp(const Eigen::Ref<const Vector>&) = 0;
     virtual Vector ihvp(const Eigen::Ref<const Vector>&){
@@ -67,7 +67,7 @@ public:
             cpos += cone->numParams();
         }    
     }
-    Vector jacobian() const override{return jac;}
+    Vector jacobian() override{return jac;}
     Vector hvp(const Eigen::Ref<const Vector>& v) override{
         // perform the hessian-vector product for each segment
         Vector hvp = Vector::Zero(this->num_params);

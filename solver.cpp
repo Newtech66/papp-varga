@@ -1,6 +1,8 @@
 #ifndef SOLVER_PAPP_VARGA_H
 #define SOLVER_PAPP_VARGA_H
 #include <string>
+#include <chrono>
+#include <thread>
 #include <Eigen/Core>
 #include <mpreal.h>
 #include "model.cpp"
@@ -15,12 +17,11 @@ private:
     Point<RealScalar> p, dp, q;
     RealScalar mu, nu;
     int steps_taken;
-    const int width = 20;
     std::vector<RealScalar> alpha_sched;
     void set_init_point(Model<RealScalar>& model);
     void adaptive_update_mu(Model<RealScalar>& model);
     void print_header() const;
-    void print_row(Model<RealScalar>& model) const;
+    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double, std::milli>&) const;
     // unused
     void calc_nu(Model<RealScalar>& model);
     RealScalar calc_iterate_norm(Model<RealScalar>& model, const RealScalar& mu);
@@ -31,16 +32,27 @@ public:
 
 template<typename RealScalar>
 void Solver<RealScalar>::print_header() const{
-    // Iteration | primal | dual | residual | tau | kap | mu
-    std::cout << "Iter" << std::setw(width) << "Primal" << std::setw(width) <<
-    "Dual" << std::setw(width) << "resnrm" << std::setw(width) << "tau" << std::setw(width) << "kap" << std::setw(width) << "mu" << std::endl;
+    std::cout << std::left << std::setw(8)  << "Step";
+    std::cout << std::left << std::setw(16) << "Primal";
+    std::cout << std::left << std::setw(16) << "Dual";
+    std::cout << std::left << std::setw(14) << "tau";
+    std::cout << std::left << std::setw(14) << "kap";
+    std::cout << std::left << std::setw(14) << "mu";
+    std::cout << std::left << std::setw(8)  << "istep";
+    std::cout << std::left << std::setw(10) << "time (ms)";
+    std::cout << std::endl;
 }
 template<typename RealScalar>
-void Solver<RealScalar>::print_row(Model<RealScalar>& model) const{
-    // Iteration | primal | dual | tau | kap | mu
-    std::cout << steps_taken << std::setw(width) << model.c.dot(p.x) / p.tau <<
-    std::setw(width) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau <<
-    std::setw(width) << compute_newton_residuals(model).norm() << std::setw(width) << p.tau << std::setw(width) << p.kap << std::setw(width) << mu << std::endl;
+void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double, std::milli>& step_time) const{
+    std::cout << std::left << std::setw(8)  << steps_taken;
+    std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
+    std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
+    std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.tau;
+    std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.kap;
+    std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
+    std::cout << std::left << std::setw(8)  << istep;
+    std::cout << std::left << std::setw(10) << std::fixed << std::setprecision(2) << step_time.count();
+    std::cout << std::endl;
 }
 
 template<typename RealScalar>
@@ -52,49 +64,80 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     calc_nu(model);
     LinearSolver solver(model);
     steps_taken = 0;
-    // print_header();
+    print_header();
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
             break;
         }
         // adaptive update
+        // auto solve_start = std::chrono::high_resolution_clock::now();
         // dp = solver.solve_ns(model, p, q, mu);
         // p += dp;
         // model.cone().updatePoint(p.s);
         // adaptive_update_mu(model);
+        // auto solve_end = std::chrono::high_resolution_clock::now();
         //largest update
+        auto solve_start = std::chrono::high_resolution_clock::now();
         int istep = 0;
+        mu *= RealScalar(1) - nu;
         while(istep < alpha_sched.size()){
-            dp = solver.solve_ns(model, p, q, mu);
+            RealScalar nextmu = mu * alpha_sched[istep];
+            dp = solver.solve_ns(model, p, q, nextmu);
             p += dp;
             model.cone().updatePoint(p.s);
-            mu = alpha_sched[istep] * mu;
             // check in neighbourhood
-            if(calc_iterate_norm(model, mu) > mu / RealScalar(4)){
+            if(calc_iterate_norm(model, nextmu) > nextmu / RealScalar(4)){
                 p -= dp;
                 model.cone().updatePoint(p.s);
                 break;
             }
+            p -= dp;
+            model.cone().updatePoint(p.s);
             ++istep;
         }
+        mu *= alpha_sched[istep - 1];
+        dp = solver.solve_ns(model, p, q, mu);
+        p += dp;
+        model.cone().updatePoint(p.s);
+        // int istep = 0;
+        // RealScalar lo = 0.9, hi = 1.0, mid, res = 1.0;
+        // mu *= RealScalar(1) - nu;
+        // while(istep < 10){
+        //     mid = (lo + hi) / RealScalar(2);
+        //     dp = solver.solve_ns(model, p, q, mu * mid);
+        //     p += dp;
+        //     model.cone().updatePoint(p.s);
+        //     // check in neighbourhood
+        //     if(mu * mid / RealScalar(4) < calc_iterate_norm(model, mu * mid))   lo = mid;
+        //     else   hi = res = mid;
+        //     p -= dp;
+        //     model.cone().updatePoint(p.s);
+        //     ++istep;
+        // }
+        // mu *= res;
+        // dp = solver.solve_ns(model, p, q, mu);
+        // p += dp;
+        // model.cone().updatePoint(p.s);
+        auto solve_end = std::chrono::high_resolution_clock::now();
         ++steps_taken;
-        // print_row(model);
+        print_row(model, istep, solve_end - solve_start);
     }
+    std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
-    std::cout << "Solver status: ";
-    if(p.tau < tol_fail and p.kap < tol_fail)   std::cout << "UNKNOWN (tau = 0, kap = 0)";
-    else if(p.kap > tol_fail and p.tau > tol_fail)  std::cout << "UNKNOWN (tau > 0, kap > 0)";
-    else if(p.kap > tol_fail){
-        bool pinfeas = model.h.dot(p.z) + model.b.dot(p.y) < RealScalar(0);
-        bool dinfeas = model.c.dot(p.x) < RealScalar(0);
-        if(pinfeas and dinfeas) std::cout << "PRIMAL_DUAL_INFEASIBLE";
-        else if(pinfeas) std::cout << "PRIMAL_INFEASIBLE";
-        else if(dinfeas) std::cout << "DUAL_INFEASIBLE";
-        else    std::cout << "INFEASIBLE";
-    }else if(p.tau > tol_fail)  std::cout << "OPTIMAL";
-    else   std::cout << "UNEXPECTED";
-    std::cout << std::endl;
+    // std::cout << "Solver status: ";
+    // if(p.tau < tol_fail and p.kap < tol_fail)   std::cout << "UNKNOWN (tau = 0, kap = 0)";
+    // else if(p.kap > tol_fail and p.tau > tol_fail)  std::cout << "UNKNOWN (tau > 0, kap > 0)";
+    // else if(p.kap > tol_fail){
+    //     bool pinfeas = model.h.dot(p.z) + model.b.dot(p.y) < RealScalar(0);
+    //     bool dinfeas = model.c.dot(p.x) < RealScalar(0);
+    //     if(pinfeas and dinfeas) std::cout << "PRIMAL_DUAL_INFEASIBLE";
+    //     else if(pinfeas) std::cout << "PRIMAL_INFEASIBLE";
+    //     else if(dinfeas) std::cout << "DUAL_INFEASIBLE";
+    //     else    std::cout << "INFEASIBLE";
+    // }else if(p.tau > tol_fail)  std::cout << "OPTIMAL";
+    // else   std::cout << "UNEXPECTED";
+    // std::cout << std::endl;
     return p;
 }
 
@@ -148,7 +191,8 @@ void Solver<RealScalar>::set_init_point(Model<RealScalar>& model){
     q.z = - model.h + p.s;
     q.tau = model.h.dot(p.z) + RealScalar(1);
     calc_nu(model);
-    alpha_sched = {RealScalar(1) - nu, 0.9999, 0.999, 0.99, 0.9, 0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.01, 0.001};
+    alpha_sched = {1.0, 0.9, 0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.01, 0.001};
+    // alpha_sched = {1.0, 0.99, 0.98, 0.97, 0.96};
 }
 
 // unused

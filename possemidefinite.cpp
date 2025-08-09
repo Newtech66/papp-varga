@@ -15,6 +15,7 @@ protected:
     inline static const std::string cone_name{"Positive Semidefinite Cone"};
     int matrix_size;
     Matrix P, Pinv, I;
+    bool jac_updated = false;
 public:
     PositiveSemidefinite(const int n) : matrix_size(n){
         I.setIdentity(matrix_size, matrix_size);
@@ -29,13 +30,21 @@ public:
     }
     void updatePoint(const Eigen::Ref<const RealVector>& p) override{
         P = Vectorize::unvec<RealScalar, IsComplex>(p);
-        Pinv = P.llt().solve(I);
+        jac_updated = false;
     }
-    RealVector jacobian() const override{
+    RealVector jacobian() override{
+        if(!jac_updated){
+            Pinv = P.ldlt().solve(I);
+            jac_updated = true;
+        }
         return -Vectorize::vec<RealScalar>(Pinv);
     }
     RealVector hvp(const Eigen::Ref<const RealVector>& v) override{
         Matrix V = Vectorize::unvec<RealScalar, IsComplex>(v);
+        if(!jac_updated){
+            Pinv = P.ldlt().solve(I);
+            jac_updated = true;
+        }
         return Vectorize::vec<RealScalar>(Pinv * V * Pinv);
     }
     RealVector ihvp(const Eigen::Ref<const RealVector>& v) override{
@@ -66,7 +75,7 @@ public:
         P = p.asDiagonal();
         Pinv = P.inverse();
     }
-    Vector jacobian() const override{
+    Vector jacobian() override{
         return -Pinv.diagonal();
     }
     Vector hvp(const Eigen::Ref<const Vector>& v) override{
