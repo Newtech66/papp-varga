@@ -1,7 +1,7 @@
 #ifndef LINSOLVER_PAPP_VARGA_H
 #define LINSOLVER_PAPP_VARGA_H
 #include <Eigen/Cholesky>
-#include <Eigen/QR>
+#include <Eigen/LU>
 #include "model.cpp"
 #include "point.cpp"
 

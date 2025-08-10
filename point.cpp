@@ -3,13 +3,6 @@
 #include <Eigen/Core>
 
 template<typename RealScalar>
-struct PointXYS{
-    using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
-    // should be private probably but whatever
-    Vector x, y, s;
-};
-
-template<typename RealScalar>
 struct Point{
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
     // should be private probably but whatever

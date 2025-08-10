@@ -19,10 +19,10 @@ void mpfr_setup(){
 }
 
 int main(int argc, char* argv[]){
-    if(argc < 2){
-        throw std::logic_error("Too few arguments: Argument format is <input file>");
-    }else if(argc > 2){
-        throw std::logic_error("Too many arguments: Argument format is <input file>");
+    if(argc < 3){
+        throw std::logic_error("Too few arguments: Argument format is <input file> <prec>");
+    }else if(argc > 3){
+        throw std::logic_error("Too many arguments: Argument format is <input file> <prec>");
     }
     std::filesystem::path input_filepath(argv[1]);
     mpfr_setup();
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]){
     std::cout << "Model read successfully! Now solving..." << std::endl;
     Solver<SOLVER_TYPE> solver;
     // Point<mpfr::mpreal> final_point = solver.solve(model, mpfr::mpreal("1e-6"), mpfr::mpreal("1e-8"));
-    Point<SOLVER_TYPE> final_point = solver.solve(model, 1e-6, 1e-8);
+    Point<SOLVER_TYPE> final_point = solver.solve(model, std::stod(argv[2]), 1e-8);
     std::cout << "tau = " << std::fixed << std::setprecision(10) << final_point.tau << std::endl;
     std::cout << "kap = " << std::fixed << std::setprecision(10) << final_point.kap << std::endl;
     std::cout << "Primal objective = " << std::fixed << std::setprecision(10) << model.c.dot(final_point.x) / final_point.tau << std::endl;
