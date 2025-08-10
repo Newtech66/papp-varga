@@ -15,9 +15,10 @@ class LogPerspecEpi : public Cone<RealScalar>{
     using RealVector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 protected:
     int matrix_size;
+    bool jac_updated = false;
     Matrix T, X, Y, I;
     Eigen::SelfAdjointEigenSolver<Matrix> eigh;
-    Eigen::LLT<Matrix> llt;
+    Eigen::LDLT<Matrix> llt;
     // precompute the jacobian
     RealVector jac;
     // column vectors of eigenvalues of X and Y (use real vector because eigvals are real)
@@ -43,8 +44,6 @@ public:
         Y.setIdentity(matrix_size, matrix_size);
         I.setIdentity(matrix_size, matrix_size);
         jac.resize(this->num_params);
-        // compute everything else
-        computeAux();
     }
     RealVector point() const override{
         RealVector v(this->num_params);
@@ -55,11 +54,22 @@ public:
         T = Vectorize::unvec<RealScalar, IsComplex>(p.head(this->num_params));
         X = Vectorize::unvec<RealScalar, IsComplex>(p.segment(this->num_params, this->num_params));
         Y = Vectorize::unvec<RealScalar, IsComplex>(p.tail(this->num_params));
-        // compute everything else
-        computeAux();
+        jac_updated = false;
     }
-    RealVector jacobian() const override{return jac;}
+    RealVector jacobian() override{
+        if(!jac_updated){
+            // compute everything else
+            computeAux();
+            jac_updated = true;
+        }
+        return jac;
+    }
     RealVector hvp(const Eigen::Ref<const RealVector>& v) override{
+        if(!jac_updated){
+            // compute everything else
+            computeAux();
+            jac_updated = true;
+        }
         // it would cost too much to store the hessian in memory
         // so we compute the hvp on demand
         // There are a few parts to this. UU.adjoint() + M
@@ -71,8 +81,8 @@ public:
         Matrix Tz = Matrix::Zero(matrix_size, matrix_size);
         // let's apply M first
         // first, the purely diagonal part
-        Tx += Xinv * Vx * Xinv;
-        Ty += Yinv * Vy * Yinv;
+        Tx.noalias() += Xinv * Vx * Xinv;
+        Ty.noalias() += Yinv * Vy * Yinv;
         // then, the bilinear map part
         Tx += Dxx(Zinv, Vx) + Dxy(Zinv, Vy);
         Ty += Dxy(Zinv, Vx) + Dyy(Zinv, Vy);
@@ -127,17 +137,20 @@ private:
         Yeig = eigh.eigenvalues();
         Yeigv = eigh.eigenvectors();
         // Calculate the inv, sqrt, isqrt matrices
-        Xinv = Xeigv * Xeig.cwiseInverse().asDiagonal() * Xeigv.adjoint();
-        Xsqrt = Xeigv * Xeig.cwiseSqrt().asDiagonal() * Xeigv.adjoint();
-        Xisqrt = Xeigv * Xeig.cwiseSqrt().cwiseInverse().asDiagonal() * Xeigv.adjoint();
-        Ysqrt = Yeigv * Yeig.cwiseSqrt().asDiagonal() * Yeigv.adjoint();
-        Yisqrt = Yeigv * Yeig.cwiseSqrt().cwiseInverse().asDiagonal() * Yeigv.adjoint();
+        Xsqrt = X.sqrt();
+        Xinv.noalias() = Xeigv * Xeig.cwiseInverse().asDiagonal() * Xeigv.adjoint();
+        Yinv.noalias() = Yeigv * Yeig.cwiseInverse().asDiagonal() * Yeigv.adjoint();
+        Xsqrt.noalias() = Xeigv * Xeig.cwiseSqrt().asDiagonal() * Xeigv.adjoint();
+        Xisqrt.noalias() = Xeigv * Xeig.cwiseSqrt().cwiseInverse().asDiagonal() * Xeigv.adjoint();
+        Ysqrt.noalias() = Yeigv * Yeig.cwiseSqrt().asDiagonal() * Yeigv.adjoint();
+        Yisqrt.noalias() = Yeigv * Yeig.cwiseSqrt().cwiseInverse().asDiagonal() * Yeigv.adjoint();
         // Calculate the til matrices
-        Xtil = Yisqrt * X * Yisqrt;
-        Ytil = Xisqrt * Y * Xisqrt;
+        Xtil.noalias() = Yisqrt * X * Yisqrt;
+        Ytil.noalias() = Xisqrt * Y * Xisqrt;
         // we need to invert Z
         // remember g is -logx
-        Matrix Z = T + Xsqrt * g(Ytil) * Xsqrt;
+        Matrix Z = T;
+        Z.noalias() += Xsqrt * g(Ytil) * Xsqrt;
         llt.compute(Z);
         Zinv = llt.solve(I);
         // precompute the jacobian
@@ -146,7 +159,7 @@ private:
     Matrix g(const Eigen::Ref<const Matrix>& V){
         // -log(x)
         eigh.compute(V);
-        return - eigh.eigenvectors() * eigh.eigenvalues().cwiseInverse().asDiagonal() * eigh.eigenvectors().adjoint();
+        return - eigh.eigenvectors() * eigh.eigenvalues().array().log().matrix().asDiagonal() * eigh.eigenvectors().adjoint();
     }
     // we need frechet here...
     RealScalar g1divd(RealScalar a, RealScalar b){

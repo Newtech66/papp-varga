@@ -2,11 +2,10 @@
 #define READER_PAPP_VARGA_H
 #include <fstream>
 #include <filesystem>
-#include <map>
 #include <unsupported/Eigen/MPRealSupport>
 #include "model.cpp"
 #include "possemidefinite.cpp"
-#include "logperspecepi.cpp"
+// #include "logperspecepi.cpp"
 
 template<typename T>
 std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_size){
@@ -19,8 +18,7 @@ std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_s
     }else if(cone_name == "DIAGONALPSD"){
         using cone = DiagonalPositiveSemidefinite<T>;
         return std::make_unique<cone>(cone(cone_size));
-    }
-    // else if(cone_name == "REALLOGPERSPECEPI"){
+    }//else if(cone_name == "REALLOGPERSPECEPI"){
     //     using cone = LogPerspecEpi<T, false>;
     //     return std::make_unique<cone>(cone(cone_size));
     // }else if(cone_name == "COMPLEXLOGPERSPECEPI"){
