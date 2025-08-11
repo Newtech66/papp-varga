@@ -5,25 +5,6 @@
 #include "cones.cpp"
 #include "vectorize.cpp"
 
-// Example of a matrix-free wrapper from a user type to Eigen's compatible type
-// For the sake of simplicity, this example simply wrap a Eigen::SparseMatrix.
-// class MatrixM : public Eigen::EigenBase<MatrixM> {
-//  public:
-//   // Required typedefs, constants, and method:
-//   typedef double Scalar;
-//   typedef double RealScalar;
-//   typedef int StorageIndex;
-//   enum { ColsAtCompileTime = Eigen::Dynamic, MaxColsAtCompileTime = Eigen::Dynamic, IsRowMajor = false };
- 
-//   Index rows() const { return mp_mat->rows(); }
-//   Index cols() const { return mp_mat->cols(); }
- 
-//   template <typename Rhs>
-//   Eigen::Product<MatrixReplacement, Rhs, Eigen::AliasFreeProduct> operator*(const Eigen::MatrixBase<Rhs>& x) const {
-//     return Eigen::Product<MatrixReplacement, Rhs, Eigen::AliasFreeProduct>(*this, x.derived());
-//   }
-// };
-
 template<typename RealScalar, bool IsComplex>
 class LogPerspecEpi : public Cone<RealScalar>{
     // internally, Matrix and Vector types are used
@@ -50,11 +31,10 @@ protected:
     // Matrix inverses
     Matrix Zinv, Xinv, Yinv;
     // Xtil = Yisqrt * X * Yisqrt, Ytil = Xisqrt * Y * Xisqrt
-    Matrix Xtil, Ytil;
+    RealVector Xtileig, Ytileig;
+    Matrix Xtileigv, Ytileigv;
     // YsZiYs = Ysqrt * Zinv * Ysqrt, XsZiXs = Xsqrt * Zinv * Xsqrt
     Matrix YsZiYs, XsZiXs;
-    // Matrix specialization for CG
-    // MatrixM M;
 public:
     LogPerspecEpi(int n) : matrix_size(n){
         // the barrier function is given by -log det Z - log det X - log det Y
@@ -111,27 +91,18 @@ public:
         Matrix XisVyXis = Xisqrt * Vy * Xisqrt;
         Matrix YisVyYis = Yisqrt * Vy * Yisqrt;
         Matrix XisVxXis = Xisqrt * Vx * Xisqrt;
-        Tx.noalias() += Yisqrt * D2ghat(Xtil, YsZiYs, YisVxYis) * Yisqrt;
-        Tx.noalias() += Yisqrt * (Dghat(Xtil, Ysqrt * Zinv * Vy * Yisqrt + Yisqrt * Vy * Zinv * Ysqrt) - D2xghat(Xtil, YsZiYs, YisVyYis)) * Yisqrt;
-        Ty.noalias() += Xisqrt * (Dg(Ytil, Xsqrt * Zinv * Vx * Xisqrt + Xisqrt * Vx * Zinv * Xsqrt) + D2ghat(Ytil, XsZiXs, XisVxXis)) * Xisqrt;
-        Ty.noalias() += Xisqrt * D2g(Ytil, XsZiXs, XisVyXis) * Xisqrt;
+        Tx.noalias() += Yisqrt * D2ghat(Xtileig, Xtileigv, YsZiYs, YisVxYis) * Yisqrt;
+        Tx.noalias() += Yisqrt * (Dghat(Ysqrt * Zinv * Vy * Yisqrt + Yisqrt * Vy * Zinv * Ysqrt) - D2xghat(YsZiYs, YisVyYis)) * Yisqrt;
+        Ty.noalias() += Xisqrt * (Dg(Xsqrt * Zinv * Vx * Xisqrt + Xisqrt * Vx * Zinv * Xsqrt) + D2ghat(Ytileig, Ytileigv, XsZiXs, XisVxXis)) * Xisqrt;
+        Ty.noalias() += Xisqrt * D2g(XsZiXs, XisVyXis) * Xisqrt;
         // let's apply the UU.adjoint() part next
-        Matrix Q = Zinv * (Vz - Ysqrt * Dghat(Xtil, YisVxYis) * Ysqrt - Xsqrt * Dg(Ytil, XisVyXis) * Xsqrt) * Zinv;
-        Tx.noalias() -= Yisqrt * Dghat(Xtil, Ysqrt * Q * Ysqrt) * Yisqrt;
-        Ty.noalias() -= Xisqrt * Dg(Ytil, Xsqrt * Q * Xsqrt) * Xisqrt;
+        Matrix Q = Zinv * (Vz - Ysqrt * Dghat(YisVxYis) * Ysqrt - Xsqrt * Dg(XisVyXis) * Xsqrt) * Zinv;
+        Tx.noalias() -= Yisqrt * Dghat(Ysqrt * Q * Ysqrt) * Yisqrt;
+        Ty.noalias() -= Xisqrt * Dg(Xsqrt * Q * Xsqrt) * Xisqrt;
         RealVector p(this->num_params);
         p << Vectorize::vec<RealScalar>(Q), Vectorize::vec<RealScalar>(Tx), Vectorize::vec<RealScalar>(Ty);
         return p;
     }
-    // RealVector ihvp(const Eigen::Ref<const RealVector>& v) const override{
-    //     if(!jac_updated){
-    //         // compute everything else
-    //         computeAux();
-    //         jac_updated = true;
-    //     }
-    //     Eigen::ConjugateGradient<MatrixReplacement, Eigen::Lower | Eigen::Upper, Eigen::IdentityPreconditioner> cg;
-    //     cg.compute(A);
-    // }
 private:
     friend class MatrixM;
     // helper functions
@@ -153,19 +124,24 @@ private:
         Ysqrt.noalias() = Yeigv * Yeig.cwiseSqrt().asDiagonal() * Yeigv.adjoint();
         Yisqrt.noalias() = Yeigv * Yeig.cwiseSqrt().cwiseInverse().asDiagonal() * Yeigv.adjoint();
         // Calculate the til matrices
-        Xtil.noalias() = Yisqrt * X * Yisqrt;
-        Ytil.noalias() = Xisqrt * Y * Xisqrt;
+        eigh.compute(Yisqrt * X * Yisqrt);
+        Xtileig = eigh.eigenvalues();
+        Xtileigv = eigh.eigenvectors();
+        eigh.compute(Xisqrt * Y * Xisqrt);
+        Ytileig = eigh.eigenvalues();
+        Ytileigv = eigh.eigenvectors();
         // we need to invert Z
         // remember g is -logx
         Matrix Z = T;
-        eigh.compute(Ytil);
-        Z.noalias() += Xsqrt * eigh.eigenvectors() * eigh.eigenvalues().array().log().matrix().asDiagonal() * eigh.eigenvectors().adjoint() * Xsqrt;
+        Z.noalias() += Xsqrt * Ytileigv * Ytileig.array().log().matrix().asDiagonal() * Ytileigv.adjoint() * Xsqrt;
         llt.compute(Z);
         Zinv = llt.solve(I);
         YsZiYs = Ysqrt * Zinv * Ysqrt;
         XsZiXs = Xsqrt * Zinv * Xsqrt;
         // precompute the jacobian
-        jac << -Vectorize::vec<RealScalar>(Zinv), Vectorize::vec<RealScalar>(Yisqrt * Dghat(Xtil, YsZiYs) * Yisqrt - Xinv), Vectorize::vec<RealScalar>(Xisqrt * Dg(Ytil, XsZiXs) * Xisqrt - Yinv);
+        jac << -Vectorize::vec<RealScalar>(Zinv),
+                Vectorize::vec<RealScalar>(Yisqrt * Dghat(YsZiYs) * Yisqrt - Xinv),
+                Vectorize::vec<RealScalar>(Xisqrt * Dg(XsZiXs) * Xisqrt - Yinv);
     }
     // we need frechet here...
     RealScalar g1divd(RealScalar a, RealScalar b){
@@ -215,64 +191,55 @@ private:
         if(abs(a - b) < RealScalar(eps))  std::swap(b, c);
         return (xghat1divd(a, c) - xghat1divd(c, b)) / (a - b);
     }
-    Matrix Dg(const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& V){
+    Matrix Dg(const Eigen::Ref<const Matrix>& V){
         // -log(x)
         // compute first divided differences
-        eigh.compute(A);
-        Matrix U = eigh.eigenvectors();
-        RealVector L = eigh.eigenvalues();
-        Matrix F(L.size(), L.size());
+        // Dg is always called with Ytil
+        Matrix F(Ytileig.size(), Ytileig.size());
         using std::log;
         for(int i = 0; i < F.rows(); ++i){
             for(int j = 0; j < F.cols(); ++j){
-                F(i, j) = g1divd(L(i), L(j));
+                F(i, j) = g1divd(Ytileig(i), Ytileig(j));
             }
         }
-        return U * (F.cwiseProduct(U.adjoint() * V * U)) * U.adjoint();
+        return Ytileigv * (F.cwiseProduct(Ytileigv.adjoint() * V * Ytileigv)) * Ytileigv.adjoint();
     }
-    Matrix Dghat(const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& V){
+    Matrix Dghat(const Eigen::Ref<const Matrix>& V){
         // xlog(x)
         // compute first divided differences
-        eigh.compute(A);
-        Matrix U = eigh.eigenvectors();
-        RealVector L = eigh.eigenvalues();
-        Matrix F(L.size(), L.size());
+        // Dghat is always called with Xtil
+        Matrix F(Xtileig.size(), Xtileig.size());
         using std::log;
         for(int i = 0; i < F.rows(); ++i){
             for(int j = 0; j < F.cols(); ++j){
-                F(i, j) = ghat1divd(L(i), L(j));
+                F(i, j) = ghat1divd(Xtileig(i), Xtileig(j));
             }
         }
-        return U * (F.cwiseProduct(U.adjoint() * V * U)) * U.adjoint();
+        return Xtileigv * (F.cwiseProduct(Xtileigv.adjoint() * V * Xtileigv)) * Xtileigv.adjoint();
     }
-    Matrix D2g(const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
+    Matrix D2g(const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
         // -log(x)
         // compute second divided differences
-        eigh.compute(A);
-        Matrix U = eigh.eigenvectors();
-        RealVector L = eigh.eigenvalues();
-        Matrix C = Matrix::Zero(L.size(), L.size());
-        Matrix Vu = U.adjoint() * V * U;
-        Matrix Wu = U.adjoint() * W * U;
+        // always called with Ytil
+        Matrix C = Matrix::Zero(Ytileig.size(), Ytileig.size());
+        Matrix Vu = Ytileigv.adjoint() * V * Ytileigv;
+        Matrix Wu = Ytileigv.adjoint() * W * Ytileigv;
         // we need to sum over k
-        for(int k = 0; k < L.size(); ++k){
+        for(int k = 0; k < Ytileig.size(); ++k){
             // for the current k, we calculate second divided differences
-            Matrix F2k(L.size(), L.size());
+            Matrix F2k(Ytileig.size(), Ytileig.size());
             for(int i = 0; i < F2k.rows(); ++i){
                 for(int j = 0; j < F2k.cols(); ++j){
-                    F2k(i, j) = g2divd(L(i), L(k), L(j));
+                    F2k(i, j) = g2divd(Ytileig(i), Ytileig(k), Ytileig(j));
                 }
             }
             C += F2k.cwiseProduct(Vu.col(k) * Wu.row(k) + Wu.col(k) * Vu.row(k));
         }
-        return U * C * U.adjoint();
+        return Ytileigv * C * Ytileigv.adjoint();
     }
-    Matrix D2ghat(const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
+    Matrix D2ghat(const Eigen::Ref<const RealVector>& L, const Eigen::Ref<const Matrix>& U, const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
         // xlog(x)
         // compute second divided differences
-        eigh.compute(A);
-        Matrix U = eigh.eigenvectors();
-        RealVector L = eigh.eigenvalues();
         Matrix C = Matrix::Zero(L.size(), L.size());
         Matrix Vu = U.adjoint() * V * U;
         Matrix Wu = U.adjoint() * W * U;
@@ -289,54 +256,26 @@ private:
         }
         return U * C * U.adjoint();
     }
-    Matrix D2xghat(const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
+    Matrix D2xghat(const Eigen::Ref<const Matrix>& V, const Eigen::Ref<const Matrix>& W){
         // x^2 log(x)
         // compute second divided differences
-        eigh.compute(A);
-        Matrix U = eigh.eigenvectors();
-        RealVector L = eigh.eigenvalues();
-        Matrix C = Matrix::Zero(L.size(), L.size());
-        Matrix Vu = U.adjoint() * V * U;
-        Matrix Wu = U.adjoint() * W * U;
+        // always called with Xtil
+        Matrix C = Matrix::Zero(Xtileig.size(), Xtileig.size());
+        Matrix Vu = Xtileigv.adjoint() * V * Xtileigv;
+        Matrix Wu = Xtileigv.adjoint() * W * Xtileigv;
         // we need to sum over k
-        for(int k = 0; k < L.size(); ++k){
+        for(int k = 0; k < Xtileig.size(); ++k){
             // for the current k, we calculate second divided differences
-            Matrix F2k(L.size(), L.size());
+            Matrix F2k(Xtileig.size(), Xtileig.size());
             for(int i = 0; i < F2k.rows(); ++i){
                 for(int j = 0; j < F2k.cols(); ++j){
-                    F2k(i, j) = xghat2divd(L(i), L(k), L(j));
+                    F2k(i, j) = xghat2divd(Xtileig(i), Xtileig(k), Xtileig(j));
                 }
             }
             C += F2k.cwiseProduct(Vu.col(k) * Wu.row(k) + Wu.col(k) * Vu.row(k));
         }
-        return U * C * U.adjoint();
+        return Xtileigv * C * Xtileigv.adjoint();
     }
 };
-
-// IHVP
-
-// // Implementation of MatrixReplacement * Eigen::DenseVector though a specialization of internal::generic_product_impl:
-// namespace Eigen {
-// namespace internal {
- 
-// template <typename Rhs>
-// struct generic_product_impl<LPEIHVP, Rhs, SparseShape, DenseShape,
-//                             GemvProduct>  // GEMV stands for matrix-vector
-//     : generic_product_impl_base<LPEIHVP, Rhs, generic_product_impl<LPEIHVP, Rhs> > {
-//   typedef typename Product<LPEIHVP, Rhs>::Scalar Scalar;
- 
-//   template <typename Dest>
-//   static void scaleAndAddTo(Dest& dst, const LPEIHVP& lhs, const Rhs& rhs, const Scalar& alpha) {
-//     // This method should implement "dst += alpha * lhs * rhs" inplace,
-//     // however, for iterative solvers, alpha is always equal to 1, so let's not bother about it.
-//     eigen_assert(alpha == Scalar(1) && "scaling is not implemented");
-//     EIGEN_ONLY_USED_FOR_DEBUG(alpha);
- 
-
-//   }
-// };
- 
-// }  // namespace internal
-// }  /
 
 #endif
