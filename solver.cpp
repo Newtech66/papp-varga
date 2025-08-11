@@ -37,6 +37,7 @@ void Solver<RealScalar>::print_header() const{
     std::cout << std::left << std::setw(8)  << "Step";
     std::cout << std::left << std::setw(16) << "Primal";
     std::cout << std::left << std::setw(16) << "Dual";
+    // std::cout << std::left << std::setw(16) << "ResNorm";
     std::cout << std::left << std::setw(14) << "tau";
     std::cout << std::left << std::setw(14) << "kap";
     std::cout << std::left << std::setw(14) << "mu";
@@ -49,11 +50,12 @@ void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const st
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
+    // std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << compute_newton_residuals(model).norm();
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.tau;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.kap;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
     std::cout << std::left << std::setw(8)  << istep;
-    std::cout << std::left << std::setw(10) << std::fixed << std::setprecision(2) << step_time.count();
+    std::cout << std::left << std::setw(10) << std::fixed << std::setprecision(3) << step_time.count();
     std::cout << std::endl;
 }
 
@@ -75,6 +77,7 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     };
     steps_taken = 0;
     print_header();
+    std::chrono::duration<double> total_time(0);
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
@@ -83,17 +86,20 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         //largest update
         std::uintmax_t istep = max_iter;
         auto solve_start = std::chrono::high_resolution_clock::now();
-        auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
-        mu *= hic;
+        // auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
+        // mu *= hic;
         dp = solver.solve_ns(model, p, q, mu);
         p += dp;
         model.cone().updatePoint(p.s);
+        mu *= RealScalar(1) - nu;
         auto solve_end = std::chrono::high_resolution_clock::now();
         ++steps_taken;
+        total_time += solve_end - solve_start;
         print_row(model, istep, solve_end - solve_start);
     }
     std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
+    std::cout << "Solve time = " << std::fixed << std::setprecision(3) << total_time.count() << "s" << std::endl;
     return p;
 }
 
