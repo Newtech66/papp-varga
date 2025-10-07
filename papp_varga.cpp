@@ -8,15 +8,8 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 
-// using SOLVER_TYPE = mpfr::mpreal;
 using SOLVER_TYPE = double;
 
-void mpfr_setup(){
-    const int working_digits = 30;
-    const int printing_digits = 6;
-    mpfr::mpreal::set_default_prec(mpfr::digits2bits(working_digits));
-    std::cout.precision(printing_digits);
-}
 
 int main(int argc, char* argv[]){
     if(argc < 3){
@@ -25,7 +18,6 @@ int main(int argc, char* argv[]){
         throw std::logic_error("Too many arguments: Argument format is <input file> <prec>");
     }
     std::filesystem::path input_filepath(argv[1]);
-    mpfr_setup();
     std::cout << "Reading model from " << input_filepath << std::endl;
     auto file_read_start = high_resolution_clock::now();
     Model<SOLVER_TYPE> model = reader<SOLVER_TYPE>(input_filepath);
@@ -33,7 +25,6 @@ int main(int argc, char* argv[]){
     model.print_model();
     std::cout << "Model read successfully! Now solving..." << std::endl;
     Solver<SOLVER_TYPE> solver;
-    // Point<mpfr::mpreal> final_point = solver.solve(model, mpfr::mpreal("1e-6"), mpfr::mpreal("1e-8"));
     Point<SOLVER_TYPE> final_point = solver.solve(model, std::stod(argv[2]), 1e-8);
     std::cout << "tau = " << std::fixed << std::setprecision(10) << final_point.tau << std::endl;
     std::cout << "kap = " << std::fixed << std::setprecision(10) << final_point.kap << std::endl;

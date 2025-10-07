@@ -86,12 +86,12 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         //largest update
         std::uintmax_t istep = max_iter;
         auto solve_start = std::chrono::high_resolution_clock::now();
-        // auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
-        // mu *= hic;
+        auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
+        mu *= hic;
         dp = solver.solve_ns(model, p, q, mu);
         p += dp;
         model.cone().updatePoint(p.s);
-        mu *= RealScalar(1) - nu;
+        // mu *= RealScalar(1) - nu;
         auto solve_end = std::chrono::high_resolution_clock::now();
         ++steps_taken;
         total_time += solve_end - solve_start;
