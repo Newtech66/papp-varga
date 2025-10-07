@@ -67,7 +67,7 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     mu = RealScalar(1);
     LinearSolver solver(model, q);
     auto neighbourhood_check = [&](RealScalar c){
-        dp = solver.solve_ns(model, p, q, c * mu);
+        dp = solver.solve_ns(model, p, q, c * mu, false);
         p += dp;
         model.cone().updatePoint(p.s);
         RealScalar diff = c * mu / RealScalar(4) - calc_iterate_norm(model, c * mu);
@@ -86,9 +86,10 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         //largest update
         std::uintmax_t istep = max_iter;
         auto solve_start = std::chrono::high_resolution_clock::now();
+        solver.compute_aux_matrices(model);
         auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
         mu *= hic;
-        dp = solver.solve_ns(model, p, q, mu);
+        dp = solver.solve_ns(model, p, q, mu, false);
         p += dp;
         model.cone().updatePoint(p.s);
         // mu *= RealScalar(1) - nu;

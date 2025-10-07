@@ -30,15 +30,18 @@ public:
         rz.col(1) = model.h; rz.col(2) = q.z; rz.col(0).setZero();
         rx_minus_muGtHrz.resize(model.n, 3);
     }
-    Point<RealScalar> solve_ns(Model<RealScalar>& model, const Point<RealScalar>& p, const Point<RealScalar>& q, RealScalar mu){
-        Vector pzg = p.z + mu * model.cone().jacobian();
-        rx.col(0).noalias() = Gt * pzg;
+    void compute_aux_matrices(Model<RealScalar>& model){
         for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
             GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
         }
         lltG.compute(GtHG);
         AGtHGinvAt.noalias() = model.A * lltG.solve(At);
         lltA.compute(AGtHGinvAt);
+    }
+    Point<RealScalar> solve_ns(Model<RealScalar>& model, const Point<RealScalar>& p, const Point<RealScalar>& q, RealScalar mu, bool compute_aux=true){
+        Vector pzg = p.z + mu * model.cone().jacobian();
+        rx.col(0).noalias() = Gt * pzg;
+        if(compute_aux) compute_aux_matrices(model);
         // Step 1: Calculate rx - mu * Gt * H * rz
         rx_minus_muGtHrz = rx;
         rx_minus_muGtHrz.col(1).noalias() -= mu * Gt * model.cone().hvp(rz.col(1));
