@@ -1,8 +1,6 @@
 #ifndef SOLVER_PAPP_VARGA_H
 #define SOLVER_PAPP_VARGA_H
-#include <string>
 #include <chrono>
-#include <thread>
 #include <boost/math/tools/roots.hpp>
 #include <Eigen/Core>
 #include <mpreal.h>
