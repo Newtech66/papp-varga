@@ -3,6 +3,7 @@
 #include <Eigen/Cholesky>
 #include "model.cpp"
 #include "point.cpp"
+#include <Eigen/SparseCore>
 
 template<typename RealScalar>
 class LinearSolver{
@@ -15,11 +16,14 @@ private:
     Eigen::Matrix<RealScalar, Eigen::Dynamic, 3> rx_minus_muGtHrz;
     Eigen::LDLT<Matrix> lltA, lltG;
     Point<RealScalar> d;
-    Matrix At, Gt, GtHG, AGtHGinvAt;
+    Eigen::SparseMatrix<RealScalar> A, G, At, Gt;
+    Matrix GtHG, AGtHGinvAt;
 public:
     LinearSolver(const Model<RealScalar>& model, const Point<RealScalar>& q){
-        Gt = model.G.transpose();
-        At = model.A.transpose();
+        A = model.A.sparseView();
+        G = model.G.sparseView();
+        Gt = model.G.transpose().sparseView();
+        At = model.A.transpose().sparseView();
         GtHG.resize(Gt.rows(), Gt.rows());
         AGtHGinvAt.resize(model.A.rows(), model.A.rows());
         rx.resize(model.n, 3); ry.resize(model.p, 3); rz.resize(model.d, 3);
@@ -34,7 +38,7 @@ public:
             GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
         }
         lltG.compute(GtHG);
-        AGtHGinvAt.noalias() = model.A * lltG.solve(At);
+        AGtHGinvAt.noalias() = A * lltG.solve(model.A.transpose());
         lltA.compute(AGtHGinvAt);
     }
     Point<RealScalar> solve_ns(Model<RealScalar>& model, const Point<RealScalar>& p, const Point<RealScalar>& q, RealScalar mu, bool compute_aux=true){
@@ -47,7 +51,7 @@ public:
         rx_minus_muGtHrz.col(2).noalias() -= mu * Gt * model.cone().hvp(rz.col(2));
         // Step 2: Calculate y
         y = mu * ry;
-        y.noalias() += model.A * lltG.solve(rx_minus_muGtHrz);
+        y.noalias() += A * lltG.solve(rx_minus_muGtHrz);
         y = lltA.solve(y);
         // Step 3: Calculate x
         x = rx_minus_muGtHrz;
@@ -55,16 +59,16 @@ public:
         x = lltG.solve(x / mu);
         // Step 4: Calculate z
         z = -rz;
-        z.noalias() -= model.G * x;
+        z.noalias() -= G * x;
         // now we solve for dtau and dtheta
         Eigen::RowVector<RealScalar, 3> ABC, DEF;
         Vector hvph = model.cone().hvp(model.h);
         Vector hvpqz = model.cone().hvp(q.z);
-        ABC = model.c.transpose() * x + model.b.transpose() * y - mu * hvph.transpose() * z;
+        ABC = model.c.dot(x) + model.b.dot(y) - mu * hvph.dot(z);
         ABC(0) += - model.h.dot(pzg) + mu / p.tau - p.kap;
         ABC(1) += mu / (p.tau * p.tau);
         ABC(2) += q.tau;
-        DEF = - q.x.transpose() * x - q.y.transpose() * y + mu * hvpqz.transpose() * z;
+        DEF = - q.x.dot(x) - q.y.dot(y) + mu * hvpqz.dot(z);
         DEF(0) += q.z.dot(pzg);
         DEF(1) += q.tau;
         // assemble 2 x 2 matrix and solve
