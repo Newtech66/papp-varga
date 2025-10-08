@@ -21,7 +21,7 @@ private:
     void set_init_point(Model<RealScalar>& model);
     void adaptive_update_mu(Model<RealScalar>& model);
     void print_header() const;
-    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&) const;
+    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&, const std::chrono::duration<double>&) const;
     // unused
     void calc_nu(Model<RealScalar>& model);
     RealScalar calc_iterate_norm(Model<RealScalar>& model, const RealScalar& mu);
@@ -40,11 +40,12 @@ void Solver<RealScalar>::print_header() const{
     std::cout << std::left << std::setw(14) << "kap";
     std::cout << std::left << std::setw(14) << "mu";
     std::cout << std::left << std::setw(8)  << "istep";
-    std::cout << std::left << std::setw(10) << "time (s)";
+    std::cout << std::left << std::setw(14) << "upd time (s)";
+    std::cout << std::left << std::setw(12) << "mat time (s)";
     std::cout << std::endl;
 }
 template<typename RealScalar>
-void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double>& step_time) const{
+void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time) const{
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
@@ -53,7 +54,8 @@ void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const st
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.kap;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
     std::cout << std::left << std::setw(8)  << istep;
-    std::cout << std::left << std::setw(10) << std::fixed << std::setprecision(3) << step_time.count();
+    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << upd_time.count();
+    std::cout << std::left << std::setw(12) << std::fixed << std::setprecision(3) << mat_time.count();
     std::cout << std::endl;
 }
 
@@ -83,18 +85,20 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         }
         //largest update
         std::uintmax_t istep = max_iter;
-        auto solve_start = std::chrono::high_resolution_clock::now();
+        auto mat_start = std::chrono::high_resolution_clock::now();
         solver.compute_aux_matrices(model);
+        auto mat_end = std::chrono::high_resolution_clock::now();
+        auto upd_start = std::chrono::high_resolution_clock::now();
         auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
         mu *= hic;
         dp = solver.solve_ns(model, p, q, mu, false);
         p += dp;
         model.cone().updatePoint(p.s);
         // mu *= RealScalar(1) - nu;
-        auto solve_end = std::chrono::high_resolution_clock::now();
+        auto upd_end = std::chrono::high_resolution_clock::now();
         ++steps_taken;
-        total_time += solve_end - solve_start;
-        print_row(model, istep, solve_end - solve_start);
+        total_time += upd_end - upd_start + mat_end - mat_start;
+        print_row(model, istep, upd_end - upd_start, mat_end - mat_start);
     }
     std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
