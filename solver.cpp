@@ -19,13 +19,10 @@ private:
     const std::uintmax_t max_iter = 10;
     boost::math::tools::eps_tolerance<RealScalar> tcond = boost::math::tools::eps_tolerance<RealScalar>();
     void set_init_point(Model<RealScalar>& model);
-    void adaptive_update_mu(Model<RealScalar>& model);
     void print_header() const;
     void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&, const std::chrono::duration<double>&) const;
-    // unused
     void calc_nu(Model<RealScalar>& model);
     RealScalar calc_iterate_norm(Model<RealScalar>& model, const RealScalar& mu);
-    Vector compute_newton_residuals(Model<RealScalar>& model) const;
 public:
     Point<RealScalar> solve(Model<RealScalar>& model, const RealScalar& tol_gap, const RealScalar& tol_fail, const int max_steps = 1000);
 };
@@ -35,7 +32,6 @@ void Solver<RealScalar>::print_header() const{
     std::cout << std::left << std::setw(8)  << "Step";
     std::cout << std::left << std::setw(16) << "Primal";
     std::cout << std::left << std::setw(16) << "Dual";
-    // std::cout << std::left << std::setw(16) << "ResNorm";
     std::cout << std::left << std::setw(14) << "tau";
     std::cout << std::left << std::setw(14) << "kap";
     std::cout << std::left << std::setw(14) << "mu";
@@ -49,7 +45,6 @@ void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const st
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
-    // std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << compute_newton_residuals(model).norm();
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.tau;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.kap;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
@@ -86,7 +81,7 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         //largest update
         std::uintmax_t istep = max_iter;
         auto mat_start = std::chrono::high_resolution_clock::now();
-        solver.compute_aux_matrices(model);
+        solver.compute_aux_matrices(model, q);
         auto mat_end = std::chrono::high_resolution_clock::now();
         auto upd_start = std::chrono::high_resolution_clock::now();
         auto [loc, hic] = boost::math::tools::bracket_and_solve_root(neighbourhood_check, RealScalar(1) - nu, RealScalar(2.0), true, tcond, istep);
@@ -104,34 +99,6 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     std::cout << "Iterations taken = " << steps_taken << std::endl;
     std::cout << "Solve time = " << std::fixed << std::setprecision(3) << total_time.count() << "s" << std::endl;
     return p;
-}
-
-template<typename RealScalar>
-void Solver<RealScalar>::adaptive_update_mu(Model<RealScalar>& model){
-    // ||z + tau||*_(s, kap)
-    // sqrt(z^ * H^-1 * z)
-    RealScalar n2 = p.z.dot(model.cone().ihvp(p.z));
-    // add the kap tau part
-    // tau * kap^2 * tau = (kap * tau) ** 2
-    n2 += (p.kap * p.tau) * (p.kap * p.tau);
-    int barrier_parameter = 1 + model.cone().barrierParameter();
-    RealScalar a = RealScalar(barrier_parameter) - RealScalar(1) / RealScalar(16);
-    RealScalar b = p.z.dot(p.s) + p.tau * p.kap;
-    mu = (b - std::sqrt(b * b - a * n2)) / a;
-}
-
-template<>
-void Solver<mpfr::mpreal>::adaptive_update_mu(Model<mpfr::mpreal>& model){
-    // ||z + tau||*_(s, kap)
-    // sqrt(z^ * H^-1 * z)
-    mpfr::mpreal n2 = p.z.dot(model.cone().ihvp(p.z));
-    // add the kap tau part
-    // tau * kap^2 * tau = (kap * tau) ** 2
-    n2 += (p.kap * p.tau) * (p.kap * p.tau);
-    int barrier_parameter = 1 + model.cone().barrierParameter();
-    mpfr::mpreal a = mpfr::mpreal(barrier_parameter) - mpfr::mpreal(1) / mpfr::mpreal(16);
-    mpfr::mpreal b = p.z.dot(p.s) + p.tau * p.kap;
-    mu = (b - mpfr::sqrt(b * b - a * n2)) / a;
 }
 
 template<typename RealScalar>
@@ -157,8 +124,6 @@ void Solver<RealScalar>::set_init_point(Model<RealScalar>& model){
     q.tau = model.h.dot(p.z) + RealScalar(1);
     calc_nu(model);
 }
-
-// unused
 
 template<typename RealScalar>
 void Solver<RealScalar>::calc_nu(Model<RealScalar>& model){
@@ -188,33 +153,6 @@ mpfr::mpreal Solver<mpfr::mpreal>::calc_iterate_norm(Model<mpfr::mpreal>& model,
     mpfr::mpreal n2 = t.dot(model.cone().ihvp(t));
     n2 += (p.kap * p.tau - mu) * (p.kap * p.tau - mu);
     return mpfr::sqrt(n2);
-}
-
-template<typename RealScalar>
-Eigen::Vector<RealScalar, Eigen::Dynamic> Solver<RealScalar>::compute_newton_residuals(Model<RealScalar>& model) const{
-    using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
-    Matrix T = Matrix::Zero(model.n + model.p + model.d + 2, model.n + model.p + model.d + 2);
-    T.block(0, model.n, model.n, model.p) = model.A.transpose();
-    T.block(0, model.n + model.p, model.n, model.d) = model.G.transpose();
-    T.block(0, model.n + model.p + model.d, model.n, 1) = model.c;
-    T.block(0, model.n + model.p + model.d + 1, model.n, 1) = q.x;
-    T.block(model.n, model.n + model.p + model.d, model.p, 1) = model.b;
-    T.block(model.n, model.n + model.p + model.d + 1, model.p, 1) = q.y;
-    T.block(model.n + model.p, model.n + model.p + model.d, model.d, 1) = model.h;
-    T.block(model.n + model.p, model.n + model.p + model.d + 1, model.d, 1) = q.z;
-    T(model.n + model.p + model.d, model.n + model.p + model.d + 1) = q.tau;
-    // Make skew symmetric
-    T -= T.transpose().eval();
-    Vector A = Vector::Zero(T.cols());
-    Vector B = Vector::Zero(T.rows());
-    A.segment(0, model.n) = dp.x;
-    A.segment(model.n, model.p) = dp.y;
-    A.segment(model.n + model.p, model.d) = dp.z;
-    A(model.n + model.p + model.d) = dp.tau;
-    A(model.n + model.p + model.d + 1) = dp.theta;
-    B.segment(model.n + model.p, model.d) = dp.s;
-    B(model.n + model.p + model.d) = dp.kap;
-    return T * A - B;
 }
 
 #endif

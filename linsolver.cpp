@@ -17,7 +17,8 @@ private:
     Eigen::LDLT<Matrix> lltA, lltG;
     Point<RealScalar> d;
     Eigen::SparseMatrix<RealScalar> A, G, At, Gt;
-    Matrix GtHG, AGtHGinvAt;
+    Matrix GtHG;
+    Vector GtHrz1, GtHrz2, hvph, hvpqz;
 public:
     LinearSolver(const Model<RealScalar>& model, const Point<RealScalar>& q){
         A = model.A.sparseView();
@@ -25,7 +26,6 @@ public:
         Gt = model.G.transpose().sparseView();
         At = model.A.transpose().sparseView();
         GtHG.resize(Gt.rows(), Gt.rows());
-        AGtHGinvAt.resize(model.A.rows(), model.A.rows());
         rx.resize(model.n, 3); ry.resize(model.p, 3); rz.resize(model.d, 3);
          x.resize(model.n, 3);  y.resize(model.p, 3);  z.resize(model.d, 3);
         rx.col(1) = model.c; rx.col(2) = q.x;
@@ -33,22 +33,25 @@ public:
         rz.col(1) = model.h; rz.col(2) = q.z; rz.col(0).setZero();
         rx_minus_muGtHrz.resize(model.n, 3);
     }
-    void compute_aux_matrices(Model<RealScalar>& model){
+    void compute_aux_matrices(Model<RealScalar>& model, const Point<RealScalar>& q){
         for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
             GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
         }
         lltG.compute(GtHG);
-        AGtHGinvAt.noalias() = A * lltG.solve(model.A.transpose());
-        lltA.compute(AGtHGinvAt);
+        lltA.compute(A * lltG.solve(model.A.transpose()));
+        GtHrz1.noalias() = Gt * model.cone().hvp(rz.col(1));
+        GtHrz2.noalias() = Gt * model.cone().hvp(rz.col(2));
+        hvph = model.cone().hvp(model.h);
+        hvpqz = model.cone().hvp(q.z);
     }
     Point<RealScalar> solve_ns(Model<RealScalar>& model, const Point<RealScalar>& p, const Point<RealScalar>& q, RealScalar mu, bool compute_aux=true){
         Vector pzg = p.z + mu * model.cone().jacobian();
         rx.col(0).noalias() = Gt * pzg;
-        if(compute_aux) compute_aux_matrices(model);
+        if(compute_aux) compute_aux_matrices(model, q);
         // Step 1: Calculate rx - mu * Gt * H * rz
         rx_minus_muGtHrz = rx;
-        rx_minus_muGtHrz.col(1).noalias() -= mu * Gt * model.cone().hvp(rz.col(1));
-        rx_minus_muGtHrz.col(2).noalias() -= mu * Gt * model.cone().hvp(rz.col(2));
+        rx_minus_muGtHrz.col(1).noalias() -= mu * GtHrz1;
+        rx_minus_muGtHrz.col(2).noalias() -= mu * GtHrz2;
         // Step 2: Calculate y
         y = mu * ry;
         y.noalias() += A * lltG.solve(rx_minus_muGtHrz);
@@ -62,13 +65,11 @@ public:
         z.noalias() -= G * x;
         // now we solve for dtau and dtheta
         Eigen::RowVector<RealScalar, 3> ABC, DEF;
-        Vector hvph = model.cone().hvp(model.h);
-        Vector hvpqz = model.cone().hvp(q.z);
-        ABC = model.c.dot(x) + model.b.dot(y) - mu * hvph.dot(z);
+        ABC = model.c.transpose() * x + model.b.transpose() * y - mu * hvph.transpose() * z;
         ABC(0) += - model.h.dot(pzg) + mu / p.tau - p.kap;
         ABC(1) += mu / (p.tau * p.tau);
         ABC(2) += q.tau;
-        DEF = - q.x.dot(x) - q.y.dot(y) + mu * hvpqz.dot(z);
+        DEF = - q.x.transpose() * x - q.y.transpose() * y + mu * hvpqz.transpose() * z;
         DEF(0) += q.z.dot(pzg);
         DEF(1) += q.tau;
         // assemble 2 x 2 matrix and solve

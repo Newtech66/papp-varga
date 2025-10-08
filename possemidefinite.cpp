@@ -20,7 +20,6 @@ public:
     PositiveSemidefinite(const int n) : matrix_size(n){
         I.setIdentity(matrix_size, matrix_size);
         P.setIdentity(matrix_size, matrix_size);
-        Pinv.setIdentity(matrix_size, matrix_size);
         this->barrier_parameter = matrix_size;
         if(IsComplex)   this->num_params = 2 * matrix_size * matrix_size;
         else    this->num_params = matrix_size * matrix_size;
