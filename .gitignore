@@ -1,3 +1,5 @@
 .vscode/
 *.in
 *hello_world*
+mp*
+papp_varga

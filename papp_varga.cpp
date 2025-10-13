@@ -10,6 +10,12 @@ using std::chrono::duration_cast;
 
 using SOLVER_TYPE = double;
 
+void mpfr_setup(){
+    const int working_digits = 30;
+    const int printing_digits = 6;
+    mpfr::mpreal::set_default_prec(mpfr::digits2bits(working_digits));
+    std::cout.precision(printing_digits);
+}
 
 int main(int argc, char* argv[]){
     if(argc < 3){
@@ -17,6 +23,7 @@ int main(int argc, char* argv[]){
     }else if(argc > 3){
         throw std::logic_error("Too many arguments: Argument format is <input file> <prec>");
     }
+    // mpfr_setup();
     std::filesystem::path input_filepath(argv[1]);
     std::cout << "Reading model from " << input_filepath << std::endl;
     auto file_read_start = high_resolution_clock::now();
