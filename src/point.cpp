@@ -1,12 +1,12 @@
 #ifndef POINT_PAPP_VARGA_H
 #define POINT_PAPP_VARGA_H
 #include <Eigen/Core>
+#include "common_typedefs.hpp"
 
 template<typename RealScalar>
 struct Point{
-    using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
     // should be private probably but whatever
-    Vector x, y, z, s;
+    optVector<RealScalar> x, y, z, s;
     RealScalar kap, tau, theta;
     Point<RealScalar>& operator+=(const Point<RealScalar>& other);
     friend Point<RealScalar> operator+(Point<RealScalar> lhs, Point<RealScalar>& other){

@@ -2,37 +2,30 @@
 #define READER_PAPP_VARGA_H
 #include <fstream>
 #include <filesystem>
-#include <unsupported/Eigen/MPRealSupport>
 #include "model.cpp"
 #include "possemidefinite.cpp"
 #include "logperspecepi.cpp"
+#include "common_typedefs.hpp"
 
-template<typename T>
-std::unique_ptr<Cone<T>> get_cone(const std::string& cone_name, const int cone_size){
+template<typename RealScalar>
+std::unique_ptr<Cone<RealScalar>> get_cone(const std::string& cone_name, const int cone_size){
     if(cone_name == "REALPSD"){
-        using cone = PositiveSemidefinite<T, false>;
-        return std::make_unique<cone>(cone(cone_size));
+        return std::make_unique<PositiveSemidefinite<RealScalar, false>>(cone_size);
     }else if(cone_name == "COMPLEXPSD"){
-        using cone = PositiveSemidefinite<T, true>;
-        return std::make_unique<cone>(cone(cone_size));
+        return std::make_unique<PositiveSemidefinite<RealScalar, true>>(cone_size);
     }else if(cone_name == "DIAGONALPSD"){
-        using cone = DiagonalPositiveSemidefinite<T>;
-        return std::make_unique<cone>(cone(cone_size));
+        return std::make_unique<DiagonalPositiveSemidefinite<RealScalar>>(cone_size);
     }else if(cone_name == "REALLOGPERSPECEPI"){
-        using cone = LogPerspecEpi<T, false>;
-        return std::make_unique<cone>(cone(cone_size));
+        return std::make_unique<LogPerspecEpi<RealScalar, false>>(cone_size);
     }else if(cone_name == "COMPLEXLOGPERSPECEPI"){
-        using cone = LogPerspecEpi<T, true>;
-        return std::make_unique<cone>(cone(cone_size));
+        return std::make_unique<LogPerspecEpi<RealScalar, true>>(cone_size);
     }
     const std::string error_message = cone_name + " is an unsupported cone type!";
     throw std::logic_error(error_message);
 }
 
-template<typename T>
-Model<T> reader(const std::filesystem::path& input_filepath){
-    using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-    using Vector = Eigen::Vector<T, Eigen::Dynamic>;
+template<typename RealScalar>
+Model<RealScalar> reader(const std::filesystem::path& input_filepath){
     // Open the file
     std::ifstream input_file(input_filepath);
     if(!input_file){
@@ -42,7 +35,7 @@ Model<T> reader(const std::filesystem::path& input_filepath){
     // Read n, p, k
     input_file >> n >> p >> k;
     // Read cones
-    std::vector<std::unique_ptr<Cone<T>>> cones;
+    cone_array<RealScalar> cones;
     for(int i = 0; i < k; ++i){
         std::string cone_name;
         input_file >> cone_name;
@@ -52,8 +45,8 @@ Model<T> reader(const std::filesystem::path& input_filepath){
         d += cones.back()->numParams();
     }
     // Read c
-    Matrix A(p, n), G(d, n);
-    Vector c(n), b(p), h(d);
+    optMatrix<RealScalar> A(p, n), G(d, n);
+    optVector<RealScalar> c(n), b(p), h(d);
     for(int i = 0; i < n; ++i){
         input_file >> c(i);
     }
@@ -78,10 +71,10 @@ Model<T> reader(const std::filesystem::path& input_filepath){
         throw std::logic_error("Unexpected end of file!");
     }
     std::string e;
-    while(input_file >> e){
+    if(input_file >> e){
         throw std::logic_error("More data in file than expected!");
     }
-    return Model<T>(c, A, b, G, h, cones);
+    return Model<RealScalar>(c, A, b, G, h, cones);
 }
 
 #endif

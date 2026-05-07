@@ -1,7 +1,7 @@
 #ifndef POSSEMIDEFINITE_PAPP_VARGA_H
 #define POSSEMIDEFINITE_PAPP_VARGA_H
-#include "vectorize.cpp"
-#include "cones.cpp"
+#include <vectorize.cpp>
+#include <cones.hpp>
 
 template<typename RealScalar, bool IsComplex>
 class PositiveSemidefinite : public Cone<RealScalar>{
