@@ -57,7 +57,6 @@ class DiagonalPositiveSemidefinite : public Cone<RealScalar>{
     using Matrix = Eigen::DiagonalMatrix<RealScalar, Eigen::Dynamic>;
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
 protected:
-    inline static const std::string cone_name{"Diagonal Positive Semidefinite Cone"};
     int matrix_size;
     Matrix P, Pinv;
 public:
@@ -67,6 +66,7 @@ public:
         this->barrier_parameter = matrix_size;
         this->num_params = matrix_size;
     }
+    std::string coneName() override{return "Diagonal positive semi-definite cone";}
     Vector point() const override{
         return P.diagonal();
     }
@@ -74,18 +74,12 @@ public:
         P = p.asDiagonal();
         Pinv = P.inverse();
     }
-    Vector jacobian() override{
-        return -Pinv.diagonal();
-    }
+    Vector jacobian() override{return -Pinv.diagonal();}
     Vector hvp(const Eigen::Ref<const Vector>& v) override{
-        Matrix V = v.asDiagonal();
-        Matrix hvp = Pinv * V * Pinv;
-        return hvp.diagonal();
+        return (Pinv * v.asDiagonal() * Pinv).diagonal();
     }
     Vector ihvp(const Eigen::Ref<const Vector>& v) override{
-        Matrix V = v.asDiagonal();
-        Matrix ihvp = P * V * P;
-        return ihvp.diagonal();
+        return (P * v.asDiagonal() * P).diagonal();
     }
 };
 
