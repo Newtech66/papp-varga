@@ -1,9 +1,4 @@
 #include "logperspecepi.hpp"
-#include <Eigen/Core>
-#include <Eigen/Eigenvalues>
-#include <Eigen/Cholesky>
-#include "cones.hpp"
-#include "vectorize.hpp"
 
 template<typename prec_type>
 LogPerspecEpi<prec_type>::LogPerspecEpi(int n) : matrix_size(n){
@@ -11,7 +6,7 @@ LogPerspecEpi<prec_type>::LogPerspecEpi(int n) : matrix_size(n){
     // Z = T - Plog(X, Y)
     // Plog(X, Y) = -X½ log(X-½ Y X-½) X½
     this->barrier_parameter = 3 * matrix_size;
-    this->num_params = 3 * matrix_size * matrix_size;
+    this->num_params = 6 * matrix_size * matrix_size;
     T.setIdentity(matrix_size, matrix_size);
     X.setIdentity(matrix_size, matrix_size);
     Y.setIdentity(matrix_size, matrix_size);
