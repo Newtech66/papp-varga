@@ -2,6 +2,7 @@
 #define MODEL_PAPP_VARGA_H
 #include "cones.hpp"
 #include "common_typedefs.hpp"
+#include <iostream>
 
 template<typename RealScalar>
 class Model{

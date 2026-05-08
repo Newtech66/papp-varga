@@ -2,6 +2,7 @@
 #define CONES_PAPP_VARGA_H
 #include <Eigen/Core>
 #include "common_typedefs.hpp"
+#include <memory>
 
 template<typename RealScalar>
 class Cone{
@@ -19,7 +20,7 @@ public:
     // this returns the gradient evaluated at the current point
     virtual optVector<RealScalar> jacobian() = 0;
     // this returns the hessian-vector product with v evaluated at the current point
-    virtual Vector hvp(const Eigen::Ref<const optVector<RealScalar>>&) = 0;
+    virtual optVector<RealScalar> hvp(const Eigen::Ref<const optVector<RealScalar>>&) = 0;
     virtual optVector<RealScalar> ihvp(const Eigen::Ref<const optVector<RealScalar>>&){
         const std::string error_message = "Inverse Hessian-vector product is not implemented for " + coneName();
         throw std::logic_error(error_message.data());

@@ -41,7 +41,7 @@ Model<RealScalar> reader(const std::filesystem::path& input_filepath){
         input_file >> cone_name;
         int cone_size;
         input_file >> cone_size;
-        cones.emplace_back(get_cone<T>(cone_name, cone_size));
+        cones.emplace_back(get_cone<RealScalar>(cone_name, cone_size));
         d += cones.back()->numParams();
     }
     // Read c
