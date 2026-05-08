@@ -1,5 +1,5 @@
 .vscode/
-*.in
+data-files/
 *hello_world*
-mp*
 papp_varga
+build/

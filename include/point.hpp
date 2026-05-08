@@ -3,30 +3,30 @@
 #include <Eigen/Core>
 #include "common_typedefs.hpp"
 
-template<typename RealScalar>
+template<typename prec_type>
 struct Point{
     // should be private probably but whatever
-    optVector<RealScalar> x, y, z, s;
-    RealScalar kap, tau, theta;
-    Point<RealScalar>& operator+=(const Point<RealScalar>& other);
-    friend Point<RealScalar> operator+(Point<RealScalar> lhs, Point<RealScalar>& other){
+    optVector<prec_type> x, y, z, s;
+    prec_type kap, tau, theta;
+    Point<prec_type>& operator+=(const Point<prec_type>& other);
+    friend Point<prec_type> operator+(Point<prec_type> lhs, Point<prec_type>& other){
         lhs += other;
         return lhs;
     }
-    Point<RealScalar>& operator-=(const Point<RealScalar>& other);
-    friend Point<RealScalar> operator-(Point<RealScalar> lhs, Point<RealScalar>& other){
+    Point<prec_type>& operator-=(const Point<prec_type>& other);
+    friend Point<prec_type> operator-(Point<prec_type> lhs, Point<prec_type>& other){
         lhs -= other;
         return lhs;
     }
-    Point<RealScalar>& operator/=(const RealScalar& other);
-    friend Point<RealScalar> operator/(Point<RealScalar> lhs, RealScalar& other){
+    Point<prec_type>& operator/=(const prec_type& other);
+    friend Point<prec_type> operator/(Point<prec_type> lhs, prec_type& other){
         lhs /= other;
         return lhs;
     }
 };
 
-template<typename RealScalar>
-Point<RealScalar>& Point<RealScalar>::operator+=(const Point<RealScalar>& other){
+template<typename prec_type>
+Point<prec_type>& Point<prec_type>::operator+=(const Point<prec_type>& other){
     this->x += other.x;
     this->y += other.y;
     this->z += other.z;
@@ -37,8 +37,8 @@ Point<RealScalar>& Point<RealScalar>::operator+=(const Point<RealScalar>& other)
     return *this;
 }
 
-template<typename RealScalar>
-Point<RealScalar>& Point<RealScalar>::operator-=(const Point<RealScalar>& other){
+template<typename prec_type>
+Point<prec_type>& Point<prec_type>::operator-=(const Point<prec_type>& other){
     this->x -= other.x;
     this->y -= other.y;
     this->z -= other.z;
@@ -49,8 +49,8 @@ Point<RealScalar>& Point<RealScalar>::operator-=(const Point<RealScalar>& other)
     return *this;
 }
 
-template<typename RealScalar>
-Point<RealScalar>& Point<RealScalar>::operator/=(const RealScalar& other){
+template<typename prec_type>
+Point<prec_type>& Point<prec_type>::operator/=(const prec_type& other){
     this->x /= other;
     this->y /= other;
     this->z /= other;

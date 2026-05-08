@@ -1,8 +1,33 @@
-#include "linsolver.hpp"
+#ifndef LINSOLVER_PAPP_VARGA_H
+#define LINSOLVER_PAPP_VARGA_H
+#include "model.cpp"
+#include "point.hpp"
+#include <Eigen/LU>
+#include <Eigen/Cholesky>
+#include <Eigen/SparseCore>
 #include "common_typedefs.hpp"
 
-template<typename RealScalar>
-LinearSolver<RealScalar>::LinearSolver(const Model<RealScalar>& model, const Point<RealScalar>& q){
+template<typename prec_type>
+class LinearSolver{
+private:
+    // it appears using LDLT is far more stable than LLT
+    Eigen::Matrix<prec_type, Eigen::Dynamic, 3> rx, ry, rz;
+    Eigen::Matrix<prec_type, Eigen::Dynamic, 3> x, y, z;
+    Eigen::Matrix<prec_type, Eigen::Dynamic, 3> rx_minus_muGtHrz;
+    Eigen::LDLT<optMatrix<prec_type>> lltA, lltG;
+    Point<prec_type> d;
+    Eigen::SparseMatrix<prec_type> A, G, At, Gt;
+    optMatrix<prec_type> GtHG;
+    optVector<prec_type> GtHrz1, GtHrz2, hvph, hvpqz;
+public:
+    LinearSolver(const Model<prec_type>& model, const Point<prec_type>& q);
+    void compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q);
+    Point<prec_type> solve_ns(Model<prec_type>& model, const Point<prec_type>& p,
+        const Point<prec_type>& q, prec_type mu, bool compute_aux=true);
+};
+
+template<typename prec_type>
+LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point<prec_type>& q){
     A = model.A.sparseView();
     G = model.G.sparseView();
     Gt = model.G.transpose().sparseView();
@@ -16,8 +41,8 @@ LinearSolver<RealScalar>::LinearSolver(const Model<RealScalar>& model, const Poi
     rx_minus_muGtHrz.resize(model.n, 3);
 }
 
-template<typename RealScalar>
-void LinearSolver<RealScalar>::compute_aux_matrices(Model<RealScalar>& model, const Point<RealScalar>& q){
+template<typename prec_type>
+void LinearSolver<prec_type>::compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q){
     for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
         GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
     }
@@ -29,10 +54,10 @@ void LinearSolver<RealScalar>::compute_aux_matrices(Model<RealScalar>& model, co
     hvpqz = model.cone().hvp(q.z);
 }
 
-template<typename RealScalar>
-Point<RealScalar> LinearSolver<RealScalar>::solve_ns(Model<RealScalar>& model, const Point<RealScalar>& p,
-    const Point<RealScalar>& q, RealScalar mu, bool compute_aux=true){
-    optVector<RealScalar> pzg = p.z + mu * model.cone().jacobian();
+template<typename prec_type>
+Point<prec_type> LinearSolver<prec_type>::solve_ns(Model<prec_type>& model, const Point<prec_type>& p,
+    const Point<prec_type>& q, prec_type mu, bool compute_aux){
+    optVector<prec_type> pzg = p.z + mu * model.cone().jacobian();
     rx.col(0).noalias() = Gt * pzg;
     if(compute_aux) compute_aux_matrices(model, q);
     // Step 1: Calculate rx - mu * Gt * H * rz
@@ -51,7 +76,7 @@ Point<RealScalar> LinearSolver<RealScalar>::solve_ns(Model<RealScalar>& model, c
     z = -rz;
     z.noalias() -= G * x;
     // now we solve for dtau and dtheta
-    Eigen::RowVector<RealScalar, 3> ABC, DEF;
+    Eigen::RowVector<prec_type, 3> ABC, DEF;
     ABC = model.c.transpose() * x + model.b.transpose() * y - mu * hvph.transpose() * z;
     ABC(0) += - model.h.dot(pzg) + mu / p.tau - p.kap;
     ABC(1) += mu / (p.tau * p.tau);
@@ -60,12 +85,12 @@ Point<RealScalar> LinearSolver<RealScalar>::solve_ns(Model<RealScalar>& model, c
     DEF(0) += q.z.dot(pzg);
     DEF(1) += q.tau;
     // assemble 2 x 2 matrix and solve
-    Eigen::Matrix<RealScalar, 2, 2> mat{{ABC(1), ABC(2)}, {DEF(1), DEF(2)}};
-    Eigen::Vector<RealScalar, 2> con{ABC(0), DEF(0)};
+    Eigen::Matrix<prec_type, 2, 2> mat{{ABC(1), ABC(2)}, {DEF(1), DEF(2)}};
+    Eigen::Vector<prec_type, 2> con{ABC(0), DEF(0)};
     // Cholesky solve doesn't work here because mat is not positive-semidefinite
     // You cannot just throw Cholesky at everything
     // TODO: Are the previous instances of Cholesky (LLT) solve valid?
-    Eigen::Vector<RealScalar, 2> result = mat.inverse() * con;
+    Eigen::Vector<prec_type, 2> result = mat.inverse() * con;
     d.tau = result(0);
     d.theta = result(1);
     // can set dx, dy, ds now
@@ -77,3 +102,6 @@ Point<RealScalar> LinearSolver<RealScalar>::solve_ns(Model<RealScalar>& model, c
     d.kap = - p.kap + mu / p.tau - mu * d.tau / (p.tau * p.tau);
     return d;
 }
+
+
+#endif

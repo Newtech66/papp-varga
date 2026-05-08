@@ -4,35 +4,35 @@
 #include "common_typedefs.hpp"
 #include <iostream>
 
-template<typename RealScalar>
+template<typename prec_type>
 class Model{
 private:
-    ConeProduct<RealScalar> coneprod;
+    ConeProduct<prec_type> coneprod;
 public:
     // n variables, d degree of cone
     // c -> R[n, 1],
     // A -> R[p, n], G -> R[d, n],
     // b -> R[p, 1], h -> R[d, 1]
     // this should probably be private, but I want to make my life easier
-    optMatrix<RealScalar> A, G;
-    optVector<RealScalar> b, h, c;
+    optMatrix<prec_type> A, G;
+    optVector<prec_type> b, h, c;
     int n, p, d;
-    Model(const Eigen::Ref<const optVector<RealScalar>>& c,
-          const Eigen::Ref<const optMatrix<RealScalar>>& A, const Eigen::Ref<const optVector<RealScalar>>& b,
-          const Eigen::Ref<const optMatrix<RealScalar>>& G, const Eigen::Ref<const optVector<RealScalar>>& h,
-          cone_array<RealScalar>& cones){
+    Model(const Eigen::Ref<const optVector<prec_type>>& c,
+          const Eigen::Ref<const optMatrix<prec_type>>& A, const Eigen::Ref<const optVector<prec_type>>& b,
+          const Eigen::Ref<const optMatrix<prec_type>>& G, const Eigen::Ref<const optVector<prec_type>>& h,
+          cone_array<prec_type>& cones){
             this->c = c;
             this->A = A;    this->b = b;
             this->G = G;    this->h = h;
-            this->coneprod = ConeProduct<RealScalar>(cones);
+            this->coneprod = ConeProduct<prec_type>(cones);
             this->n = c.rows(); this->p = b.rows(); this->d = h.rows();
           }
     void print_model() const;
-    ConeProduct<RealScalar>& cone(){return coneprod;}
+    ConeProduct<prec_type>& cone(){return coneprod;}
 };
 
-template<typename RealScalar>
-void Model<RealScalar>::print_model() const{
+template<typename prec_type>
+void Model<prec_type>::print_model() const{
     std::cout << "-------------------" << std::endl;
     std::cout << "Model parameters:" << std::endl;
     std::cout << "-------------------" << std::endl;

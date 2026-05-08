@@ -2,8 +2,8 @@
 #define LOGPERSPECEPI_PAPP_VARGA_H
 #include <Eigen/Core>
 #include <Eigen/Eigenvalues>
-#include <cones.hpp>
-#include <vectorize.cpp>
+#include "cones.hpp"
+#include "vectorize.cpp"
 
 template<typename RealScalar, bool IsComplex>
 class LogPerspecEpi : public Cone<RealScalar>{

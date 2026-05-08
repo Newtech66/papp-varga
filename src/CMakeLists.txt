@@ -1,0 +1,9 @@
+target_sources(papp-varga
+PRIVATE
+linsolver.cpp
+model.cpp
+possemidefinite.cpp
+reader.cpp
+solver.cpp
+papp_varga.cpp
+)
