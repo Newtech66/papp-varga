@@ -6,7 +6,8 @@ LogPerspecEpi<prec_type, is_complex>::LogPerspecEpi(int n) : matrix_size(n){
     // Z = T - Plog(X, Y)
     // Plog(X, Y) = -X½ log(X-½ Y X-½) X½
     this->barrier_parameter = 3 * matrix_size;
-    this->num_params = 6 * matrix_size * matrix_size;
+    if(is_complex)  this->num_params = 6 * matrix_size * matrix_size;
+    else    this->num_params = 3 * matrix_size * matrix_size;
     T.setIdentity(matrix_size, matrix_size);
     X.setIdentity(matrix_size, matrix_size);
     Y.setIdentity(matrix_size, matrix_size);
