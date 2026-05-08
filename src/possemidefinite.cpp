@@ -25,7 +25,7 @@ public:
     std::string coneName() const override{return std::string("Real positive semi-definite cone");}
     optVector<prec_type> point() const override{return vec<prec_type>(P);}
     void updatePoint(const Eigen::Ref<const optVector<prec_type>>& p) override{
-        P = unvec<prec_type, false>(p, matrix_size);
+        P = unvecReal<prec_type>(p, matrix_size);
         jac_updated = false;
     }
     optVector<prec_type> jacobian() override{
@@ -40,10 +40,10 @@ public:
             Pinv = P.ldlt().solve(iden);
             jac_updated = true;
         }
-        return vec<prec_type>(Pinv * unvec<prec_type, false>(v, matrix_size) * Pinv);
+        return vec<prec_type>(Pinv * unvecReal<prec_type>(v, matrix_size) * Pinv);
     }
     optVector<prec_type> ihvp(const Eigen::Ref<const optVector<prec_type>>& v) override{
-        return vec<prec_type>(P * unvec<prec_type, false>(v, matrix_size) * P);
+        return vec<prec_type>(P * unvecReal<prec_type>(v, matrix_size) * P);
     }
 };
 
@@ -53,7 +53,7 @@ class ComplexPositiveSemidefinite : public Cone<prec_type>{
     // externally, the argument and return type is RealVector
 protected:
     int matrix_size;
-    optMatrix<prec_type> P, Pinv, iden;
+    optMatrix<std::complex<prec_type>> P, Pinv, iden;
     bool jac_updated = false;
 public:
     ComplexPositiveSemidefinite(const int n) : matrix_size(n){
@@ -65,7 +65,7 @@ public:
     std::string coneName() const override{return std::string("Complex positive semi-definite cone");}
     optVector<prec_type> point() const override{return vec<prec_type>(P);}
     void updatePoint(const Eigen::Ref<const optVector<prec_type>>& p) override{
-        P = unvec<prec_type, true>(p, matrix_size);
+        P = unvecComplex<prec_type>(p, matrix_size);
         jac_updated = false;
     }
     optVector<prec_type> jacobian() override{
@@ -80,10 +80,10 @@ public:
             Pinv = P.ldlt().solve(iden);
             jac_updated = true;
         }
-        return vec<prec_type>(Pinv * unvec<prec_type, true>(v, matrix_size) * Pinv);
+        return vec<prec_type>(Pinv * unvecComplex<prec_type>(v, matrix_size) * Pinv);
     }
     optVector<prec_type> ihvp(const Eigen::Ref<const optVector<prec_type>>& v) override{
-        return vec<prec_type>(P * unvec<prec_type, true>(v, matrix_size) * P);
+        return vec<prec_type>(P * unvecComplex<prec_type>(v, matrix_size) * P);
     }
 };
 
