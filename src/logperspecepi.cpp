@@ -23,9 +23,9 @@ optVector<prec_type> LogPerspecEpi<prec_type>::point() const{
 
 template<typename prec_type>
 void LogPerspecEpi<prec_type>::updatePoint(const Eigen::Ref<const optVector<prec_type>>& p){
-    T = unvec<prec_type, true>(p.head(this->num_params / 3), matrix_size);
-    X = unvec<prec_type, true>(p.segment(this->num_params / 3, this->num_params / 3), matrix_size);
-    Y = unvec<prec_type, true>(p.tail(this->num_params / 3), matrix_size);
+    T = unvec<prec_type, true>(p(Eigen::seqN(Eigen::fix<0>, this->num_params / 3)), matrix_size);
+    X = unvec<prec_type, true>(p(Eigen::seqN(this->num_params / 3, this->num_params / 3)), matrix_size);
+    Y = unvec<prec_type, true>(p(Eigen::placeholders::lastN(this->num_params / 3)), matrix_size);
     jac_updated = false;
 }
 
@@ -49,9 +49,9 @@ optVector<prec_type> LogPerspecEpi<prec_type>::hvp(const Eigen::Ref<const optVec
     // it would cost too much to store the hessian in memory
     // so we compute the hvp on demand
     // There are a few parts to this. UU.adjoint() + M
-    optMatrix<std::complex<prec_type>> Vz = unvec<prec_type, true>(v.head(this->num_params / 3), matrix_size);
-    optMatrix<std::complex<prec_type>> Vx = unvec<prec_type, true>(v.segment(this->num_params / 3, this->num_params / 3), matrix_size);
-    optMatrix<std::complex<prec_type>> Vy = unvec<prec_type, true>(v.tail(this->num_params / 3), matrix_size);
+    optMatrix<std::complex<prec_type>> Vz = unvec<prec_type, true>(v(Eigen::seqN(Eigen::fix<0>, this->num_params / 3)), matrix_size);
+    optMatrix<std::complex<prec_type>> Vx = unvec<prec_type, true>(v(Eigen::seqN(this->num_params / 3, this->num_params / 3)), matrix_size);
+    optMatrix<std::complex<prec_type>> Vy = unvec<prec_type, true>(v(Eigen::placeholders::lastN(this->num_params / 3)), matrix_size);
     optMatrix<std::complex<prec_type>> Tx = optMatrix<std::complex<prec_type>>::Zero(matrix_size, matrix_size);
     optMatrix<std::complex<prec_type>> Ty = optMatrix<std::complex<prec_type>>::Zero(matrix_size, matrix_size);
     // let's apply M first

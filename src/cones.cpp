@@ -15,20 +15,19 @@ ConeProduct<prec_type>::ConeProduct(cone_array<prec_type>& cones){
     hvpsto = optVector<prec_type>::Zero(this->num_params);
     int cpos = 0;
     for(auto&& cone : this->cones){
-        p.segment(cpos, cone->numParams()) = cone->point();
-        jac.segment(cpos, cone->numParams()) = cone->jacobian();
+        p(Eigen::seqN(cpos, cone->numParams())) = cone->point();
+        jac(Eigen::seqN(cpos, cone->numParams())) = cone->jacobian();
         cpos += cone->numParams();
     }
     jac_updated = true;
 }
 
 template <typename prec_type>
-void ConeProduct<prec_type>::updatePoint(const Eigen::Ref<const optVector<prec_type>> &v)
-{
+void ConeProduct<prec_type>::updatePoint(const Eigen::Ref<const optVector<prec_type>> &v){
     int cpos = 0;
     for(auto&& cone : cones){
-        cone->updatePoint(v.segment(cpos, cone->numParams()));
-        p.segment(cpos, cone->numParams()) = cone->point();
+        cone->updatePoint(v(Eigen::seqN(cpos, cone->numParams())));
+        p(Eigen::seqN(cpos, cone->numParams())) = cone->point();
         cpos += cone->numParams();
     }
     jac_updated = false;
@@ -39,7 +38,7 @@ optVector<prec_type> ConeProduct<prec_type>::jacobian(){
     if(!jac_updated){
         int cpos = 0;
         for(auto&& cone : cones){
-            jac.segment(cpos, cone->numParams()) = cone->jacobian();
+            jac(Eigen::seqN(cpos, cone->numParams())) = cone->jacobian();
             cpos += cone->numParams();
         }
         jac_updated = true;
@@ -52,7 +51,7 @@ optVector<prec_type> ConeProduct<prec_type>::hvp(const Eigen::Ref<const optVecto
         // perform the hessian-vector product for each segment
         int cpos = 0;
         for(auto&& cone : cones){
-            hvpsto.segment(cpos, cone->numParams()) = cone->hvp(v.segment(cpos, cone->numParams()));
+            hvpsto(Eigen::seqN(cpos, cone->numParams())) = cone->hvp(v(Eigen::seqN(cpos, cone->numParams())));
             cpos += cone->numParams();
         }
         return hvpsto;
@@ -64,7 +63,7 @@ optVector<prec_type> ConeProduct<prec_type>::ihvp(const Eigen::Ref<const optVect
         optVector<prec_type> ihvp = optVector<prec_type>::Zero(this->num_params);
         int cpos = 0;
         for(auto&& cone : cones){
-            ihvp.segment(cpos, cone->numParams()) = cone->ihvp(v.segment(cpos, cone->numParams()));
+            ihvp(Eigen::seqN(cpos, cone->numParams())) = cone->ihvp(v(Eigen::seqN(cpos, cone->numParams())));
             cpos += cone->numParams();
         }
         return ihvp;

@@ -8,3 +8,5 @@
 - **TODO:** The current build seems to be performing slower than the original non-CMake build. I don't know why.
   The difference is 312 seconds for the new build vs 198 seconds for the old build. Which is just absurd.
   This is despite compiling with OpenMP and -DNDEBUG.
+- **TODO:** Using the realView API (or in other words changing the output order of real and imaginary parts) breaks the solver.
+  I don't know why.
