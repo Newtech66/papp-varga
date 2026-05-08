@@ -34,14 +34,15 @@ template<typename prec_type>
 class ConeProduct : public Cone<prec_type>{
 protected:
     cone_array<prec_type> cones;
-    optVector<prec_type> p, jac;
+    bool jac_updated;
+    optVector<prec_type> p, jac, hvpsto;
 public:
     ConeProduct(){}
     ConeProduct(cone_array<prec_type>& cones);
     std::string coneName() const override;
     optVector<prec_type> point() const override {return p;}
     void updatePoint(const Eigen::Ref<const optVector<prec_type>>& v) override;
-    optVector<prec_type> jacobian() override{return jac;}
+    optVector<prec_type> jacobian() override;
     optVector<prec_type> hvp(const Eigen::Ref<const optVector<prec_type>>& v) override;
     optVector<prec_type> ihvp(const Eigen::Ref<const optVector<prec_type>>& v) override;
 };

@@ -6,5 +6,6 @@ logperspecepi.cpp
 possemidefinite.cpp
 reader.cpp
 solver.cpp
+vectorize.cpp
 papp_varga.cpp
 )

@@ -12,12 +12,14 @@ ConeProduct<prec_type>::ConeProduct(cone_array<prec_type>& cones){
     // let's initialize the point and jacobian
     p = optVector<prec_type>::Zero(this->num_params);
     jac = optVector<prec_type>::Zero(this->num_params);
+    hvpsto = optVector<prec_type>::Zero(this->num_params);
     int cpos = 0;
     for(auto&& cone : this->cones){
         p.segment(cpos, cone->numParams()) = cone->point();
         jac.segment(cpos, cone->numParams()) = cone->jacobian();
         cpos += cone->numParams();
     }
+    jac_updated = true;
 }
 
 template <typename prec_type>
@@ -27,21 +29,33 @@ void ConeProduct<prec_type>::updatePoint(const Eigen::Ref<const optVector<prec_t
     for(auto&& cone : cones){
         cone->updatePoint(v.segment(cpos, cone->numParams()));
         p.segment(cpos, cone->numParams()) = cone->point();
-        jac.segment(cpos, cone->numParams()) = cone->jacobian();
         cpos += cone->numParams();
     }
+    jac_updated = false;
+}
+
+template <typename prec_type>
+optVector<prec_type> ConeProduct<prec_type>::jacobian(){
+    if(!jac_updated){
+        int cpos = 0;
+        for(auto&& cone : cones){
+            jac.segment(cpos, cone->numParams()) = cone->jacobian();
+            cpos += cone->numParams();
+        }
+        jac_updated = true;
+    }
+    return jac;
 }
 
 template<typename prec_type>
 optVector<prec_type> ConeProduct<prec_type>::hvp(const Eigen::Ref<const optVector<prec_type>>& v){
         // perform the hessian-vector product for each segment
-        optVector<prec_type> hvp = optVector<prec_type>::Zero(this->num_params);
         int cpos = 0;
         for(auto&& cone : cones){
-            hvp.segment(cpos, cone->numParams()) = cone->hvp(v.segment(cpos, cone->numParams()));
+            hvpsto.segment(cpos, cone->numParams()) = cone->hvp(v.segment(cpos, cone->numParams()));
             cpos += cone->numParams();
         }
-        return hvp;
+        return hvpsto;
 }
 
 template<typename prec_type>

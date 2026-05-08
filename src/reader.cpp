@@ -7,9 +7,9 @@
 template<typename prec_type>
 std::unique_ptr<Cone<prec_type>> get_cone(const std::string& cone_name, const int cone_size){
     if(cone_name == "REALPSD"){
-        return std::make_unique<RealPositiveSemidefinite<prec_type>>(cone_size);
+        return std::make_unique<PositiveSemidefinite<prec_type, false>>(cone_size);
     }else if(cone_name == "COMPLEXPSD"){
-        return std::make_unique<ComplexPositiveSemidefinite<prec_type>>(cone_size);
+        return std::make_unique<PositiveSemidefinite<prec_type, true>>(cone_size);
     }else if(cone_name == "DIAGONALPSD"){
         return std::make_unique<DiagonalPositiveSemidefinite<prec_type>>(cone_size);
     // }else if(cone_name == "REALLOGPERSPECEPI"){

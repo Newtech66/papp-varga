@@ -3,3 +3,4 @@ data-files/
 *hello_world*
 papp_varga
 build/
+*.pl

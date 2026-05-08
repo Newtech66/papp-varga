@@ -3,8 +3,6 @@
 #include <chrono>
 #include <boost/math/tools/roots.hpp>
 #include <Eigen/Core>
-#include "model.hpp"
-#include "point.hpp"
 #include "linsolver.hpp"
 
 template<typename prec_type>
