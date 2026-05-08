@@ -22,7 +22,7 @@ endif()
 target_compile_features(papp-varga PRIVATE cxx_std_17)
 target_compile_options(papp-varga PRIVATE -march=native)
 target_compile_options(papp-varga PRIVATE -O3)
-target_compile_options(papp-varga PRIVATE -fmax-errors=1)
+target_compile_options(papp-varga PRIVATE -fdiagnostics-color=always)
 target_compile_options(papp-varga PRIVATE -DNDEBUG)
 
 target_link_libraries(papp-varga PRIVATE Eigen3::Eigen)

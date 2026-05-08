@@ -1,6 +1,6 @@
 #include "reader.hpp"
 #include "possemidefinite.hpp"
-// #include "logperspecepi.cpp"
+#include "logperspecepi.hpp"
 #include "common_typedefs.hpp"
 #include <fstream>
 
@@ -12,12 +12,11 @@ std::unique_ptr<Cone<prec_type>> get_cone(const std::string& cone_name, const in
         return std::make_unique<ComplexPositiveSemidefinite<prec_type>>(cone_size);
     }else if(cone_name == "DIAGONALPSD"){
         return std::make_unique<DiagonalPositiveSemidefinite<prec_type>>(cone_size);
-    }
     // }else if(cone_name == "REALLOGPERSPECEPI"){
     //     return std::make_unique<LogPerspecEpi<prec_type, false>>(cone_size);
-    // }else if(cone_name == "COMPLEXLOGPERSPECEPI"){
-    //     return std::make_unique<LogPerspecEpi<prec_type, true>>(cone_size);
-    // }
+    }else if(cone_name == "COMPLEXLOGPERSPECEPI"){
+        return std::make_unique<LogPerspecEpi<prec_type>>(cone_size);
+    }
     const std::string error_message = cone_name + " is an unsupported cone type!";
     throw std::logic_error(error_message);
 }

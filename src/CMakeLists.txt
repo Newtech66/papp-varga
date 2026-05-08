@@ -2,6 +2,7 @@ target_sources(papp-varga
 PRIVATE
 cones.cpp
 linsolver.cpp
+logperspecepi.cpp
 possemidefinite.cpp
 reader.cpp
 solver.cpp

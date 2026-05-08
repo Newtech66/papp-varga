@@ -5,6 +5,7 @@ FILES
 common_typedefs.hpp
 cones.hpp
 linsolver.hpp
+logperspecepi.hpp
 model.hpp
 point.hpp
 possemidefinite.hpp
