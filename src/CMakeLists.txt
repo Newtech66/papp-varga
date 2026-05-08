@@ -1,7 +1,7 @@
 target_sources(papp-varga
 PRIVATE
+cones.cpp
 linsolver.cpp
-model.cpp
 possemidefinite.cpp
 reader.cpp
 solver.cpp

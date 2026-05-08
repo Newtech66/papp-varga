@@ -1,8 +1,8 @@
 
 #define EIGEN_USE_BLAS
 #define EIGEN_USE_LAPACKE
-#include "reader.cpp"
-#include "solver.cpp"
+#include "reader.hpp"
+#include "solver.hpp"
 
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;

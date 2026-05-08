@@ -2,9 +2,13 @@ target_sources(papp-varga
 PRIVATE
 FILE_SET HEADERS
 FILES
-cones.hpp
 common_typedefs.hpp
-complex_deduction.hpp
-vectorize.hpp
+cones.hpp
+linsolver.hpp
+model.hpp
 point.hpp
+possemidefinite.hpp
+reader.hpp
+solver.hpp
+vectorize.hpp
 )

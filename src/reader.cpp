@@ -1,11 +1,8 @@
-#ifndef READER_PAPP_VARGA_H
-#define READER_PAPP_VARGA_H
-#include <fstream>
-#include <filesystem>
-#include "model.cpp"
-#include "possemidefinite.cpp"
+#include "reader.hpp"
+#include "possemidefinite.hpp"
 // #include "logperspecepi.cpp"
 #include "common_typedefs.hpp"
+#include <fstream>
 
 template<typename prec_type>
 std::unique_ptr<Cone<prec_type>> get_cone(const std::string& cone_name, const int cone_size){
@@ -78,4 +75,5 @@ Model<prec_type> reader(const std::filesystem::path& input_filepath){
     return Model<prec_type>(c, A, b, G, h, cones);
 }
 
-#endif
+template std::unique_ptr<Cone<double>> get_cone(const std::string&, const int);
+template Model<double> reader(const std::filesystem::path&);
