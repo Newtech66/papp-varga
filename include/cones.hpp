@@ -34,8 +34,8 @@ template<typename prec_type>
 class ConeProduct : public Cone<prec_type>{
 protected:
     cone_array<prec_type> cones;
-    bool jac_updated;
     optVector<prec_type> p, jac, hvpsto;
+    bool jac_updated;
 public:
     ConeProduct(){}
     ConeProduct(cone_array<prec_type>& cones);

@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     model.print_model();
     std::cout << "Model read successfully! Now solving..." << std::endl;
     Solver<prec_type> solver;
-    Point<prec_type> final_point = solver.solve(model, std::stod(argv[2]), 1e-8);
+    Point<prec_type> final_point = solver.solve(model, std::stod(argv[2]), 1e-8, 1000, 100);
     std::cout << "tau = " << std::fixed << std::setprecision(10) << final_point.tau << std::endl;
     std::cout << "kap = " << std::fixed << std::setprecision(10) << final_point.kap << std::endl;
     std::cout << "Primal objective = " << std::fixed << std::setprecision(10) << model.c.dot(final_point.x) / final_point.tau << std::endl;

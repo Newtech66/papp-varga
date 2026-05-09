@@ -7,6 +7,8 @@
 #include "point.hpp"
 #include "linsolver.hpp"
 
+using ms = std::chrono::milliseconds;
+
 template<typename prec_type>
 void Solver<prec_type>::print_header() const{
     std::cout << std::left << std::setw(8)  << "Step";
@@ -16,14 +18,13 @@ void Solver<prec_type>::print_header() const{
     std::cout << std::left << std::setw(14) << "kap";
     std::cout << std::left << std::setw(14) << "mu";
     std::cout << std::left << std::setw(8)  << "istep";
-    std::cout << std::left << std::setw(14) << "upd time (s)";
-    std::cout << std::left << std::setw(14) << "mat time (s)";
-    std::cout << std::left << std::setw(14) << "sol time (s)";
+    std::cout << std::left << std::setw(11) << "step (ms)";
+    std::cout << std::left << std::setw(13) << "auxmat (ms)";
+    std::cout << std::left << std::setw(14) << "total (s)";
     std::cout << std::endl;
 }
 template<typename prec_type>
-void Solver<prec_type>::print_row(Model<prec_type>& model, int istep,
-    const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time, const std::chrono::duration<double>& sol_time) const{
+void Solver<prec_type>::print_row(Model<prec_type>& model, int istep, const ms& upd_time, const ms& mat_time, const std::chrono::duration<double>& sol_time) const{
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
@@ -31,14 +32,21 @@ void Solver<prec_type>::print_row(Model<prec_type>& model, int istep,
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << p.kap;
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
     std::cout << std::left << std::setw(8)  << istep;
-    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << upd_time.count();
-    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << mat_time.count();
+    std::cout << std::left << std::setw(11) << std::fixed << std::setprecision(3) << upd_time.count();
+    std::cout << std::left << std::setw(13) << std::fixed << std::setprecision(3) << mat_time.count();
     std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << sol_time.count();
     std::cout << std::endl;
 }
 
 template<typename prec_type>
 Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_type& tol_gap, const prec_type& tol_fail, const int max_steps, const int record_every){
+    // A solve should look like the following:
+    // presolve the model
+    // setup the model
+    // while(model is not solved)
+    //   use the current strategy to update and step
+    //   if logging is enabled then log the step result
+    // exit
     set_init_point(model);
     mu = prec_type(1);
     LinearSolver solver(model, q);
@@ -76,7 +84,7 @@ Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_ty
         ++steps_taken, ++scnt;
         total_time += upd_end - upd_start + mat_end - mat_start;
         if(scnt == record_every){
-            print_row(model, istep, upd_end - upd_start, mat_end - mat_start, total_time);
+            print_row(model, istep, std::chrono::duration_cast<ms>(upd_end - upd_start), std::chrono::duration_cast<ms>(mat_end - mat_start), total_time);
             scnt = 0;
         }
     }
