@@ -17,12 +17,13 @@ void Solver<prec_type>::print_header() const{
     std::cout << std::left << std::setw(14) << "mu";
     std::cout << std::left << std::setw(8)  << "istep";
     std::cout << std::left << std::setw(14) << "upd time (s)";
-    std::cout << std::left << std::setw(12) << "mat time (s)";
+    std::cout << std::left << std::setw(14) << "mat time (s)";
+    std::cout << std::left << std::setw(14) << "sol time (s)";
     std::cout << std::endl;
 }
 template<typename prec_type>
 void Solver<prec_type>::print_row(Model<prec_type>& model, int istep,
-    const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time) const{
+    const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time, const std::chrono::duration<double>& sol_time) const{
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
@@ -31,12 +32,13 @@ void Solver<prec_type>::print_row(Model<prec_type>& model, int istep,
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
     std::cout << std::left << std::setw(8)  << istep;
     std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << upd_time.count();
-    std::cout << std::left << std::setw(12) << std::fixed << std::setprecision(3) << mat_time.count();
+    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << mat_time.count();
+    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << sol_time.count();
     std::cout << std::endl;
 }
 
 template<typename prec_type>
-Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_type& tol_gap, const prec_type& tol_fail, const int max_steps){
+Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_type& tol_gap, const prec_type& tol_fail, const int max_steps, const int record_every){
     set_init_point(model);
     mu = prec_type(1);
     LinearSolver solver(model, q);
@@ -52,6 +54,7 @@ Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_ty
     steps_taken = 0;
     print_header();
     std::chrono::duration<double> total_time(0);
+    int scnt = 0;
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
@@ -70,9 +73,12 @@ Point<prec_type> Solver<prec_type>::solve(Model<prec_type>& model, const prec_ty
         model.cone().updatePoint(p.s);
         mu *= prec_type(1) - nu;
         auto upd_end = std::chrono::high_resolution_clock::now();
-        ++steps_taken;
+        ++steps_taken, ++scnt;
         total_time += upd_end - upd_start + mat_end - mat_start;
-        print_row(model, istep, upd_end - upd_start, mat_end - mat_start);
+        if(scnt == record_every){
+            print_row(model, istep, upd_end - upd_start, mat_end - mat_start, total_time);
+            scnt = 0;
+        }
     }
     std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
