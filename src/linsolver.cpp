@@ -5,6 +5,8 @@
 #include <Eigen/Cholesky>
 #include <Eigen/SparseCore>
 #include "common_typedefs.hpp"
+#include <boost/range/irange.hpp>
+#include <execution>
 
 template<typename prec_type>
 LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point<prec_type>& q){
@@ -23,9 +25,10 @@ LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point
 
 template<typename prec_type>
 void LinearSolver<prec_type>::compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q){
-    for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
+    auto ints = boost::irange<int>(0, model.G.cols());
+    std::for_each_n(std::execution::par_unseq, ints.begin(), ints.size(), [&](int colIndex){
         GtHG(Eigen::placeholders::all, colIndex).noalias() = Gt * model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));
-    }
+    });
     lltG.compute(GtHG);
     lltA.compute(A * lltG.solve(model.A.transpose()));
     GtHrz1.noalias() = Gt * model.cone().hvp(rz.col(1));
