@@ -18,6 +18,7 @@ private:
     Eigen::SparseMatrix<prec_type> A, G, At, Gt;
     optMatrix<prec_type> GtHG;
     optVector<prec_type> GtHrz1, GtHrz2, hvph, hvpqz;
+    Eigen::RowVector<prec_type, 3> ABC, DEF;
 public:
     LinearSolver(const Model<prec_type>& model, const Point<prec_type>& q);
     void compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q);

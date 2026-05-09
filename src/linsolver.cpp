@@ -12,7 +12,7 @@ LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point
     G = model.G.sparseView();
     Gt = model.G.transpose().sparseView();
     At = model.A.transpose().sparseView();
-    GtHG.resize(Gt.rows(), Gt.rows());
+    GtHG.resize(G.cols(), G.cols());
     rx.resize(model.n, 3); ry.resize(model.p, 3); rz.resize(model.d, 3);
         x.resize(model.n, 3);  y.resize(model.p, 3);  z.resize(model.d, 3);
     rx.col(1) = model.c; rx.col(2) = q.x;
@@ -24,7 +24,7 @@ LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point
 template<typename prec_type>
 void LinearSolver<prec_type>::compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q){
     for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
-        GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
+        GtHG(Eigen::placeholders::all, colIndex).noalias() = Gt * model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));
     }
     lltG.compute(GtHG);
     lltA.compute(A * lltG.solve(model.A.transpose()));
@@ -56,7 +56,6 @@ Point<prec_type> LinearSolver<prec_type>::solve_ns(Model<prec_type>& model, cons
     z = -rz;
     z.noalias() -= G * x;
     // now we solve for dtau and dtheta
-    Eigen::RowVector<prec_type, 3> ABC, DEF;
     ABC = model.c.transpose() * x + model.b.transpose() * y - mu * hvph.transpose() * z;
     ABC(0) += - model.h.dot(pzg) + mu / p.tau - p.kap;
     ABC(1) += mu / (p.tau * p.tau);
