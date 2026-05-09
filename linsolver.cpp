@@ -4,6 +4,8 @@
 #include "model.cpp"
 #include "point.cpp"
 #include <Eigen/SparseCore>
+#include <boost/range/irange.hpp>
+#include <execution>
 
 template<typename RealScalar>
 class LinearSolver{
@@ -34,9 +36,10 @@ public:
         rx_minus_muGtHrz.resize(model.n, 3);
     }
     void compute_aux_matrices(Model<RealScalar>& model, const Point<RealScalar>& q){
-        for(int colIndex = 0; colIndex < model.G.cols(); ++colIndex){
-            GtHG.col(colIndex).noalias() = Gt * model.cone().hvp(model.G.col(colIndex));
-        }
+        auto ints = boost::irange<int>(0, model.G.cols());
+        std::for_each_n(std::execution::par_unseq, ints.begin(), ints.size(), [&](int colIndex){
+            GtHG(Eigen::placeholders::all, colIndex).noalias() = Gt * model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));
+        });
         lltG.compute(GtHG);
         lltA.compute(A * lltG.solve(model.A.transpose()));
         GtHrz1.noalias() = Gt * model.cone().hvp(rz.col(1));

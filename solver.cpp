@@ -20,11 +20,12 @@ private:
     boost::math::tools::eps_tolerance<RealScalar> tcond = boost::math::tools::eps_tolerance<RealScalar>();
     void set_init_point(Model<RealScalar>& model);
     void print_header() const;
-    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&, const std::chrono::duration<double>&) const;
+    void print_row(Model<RealScalar>& model, int, const std::chrono::duration<double>&, const std::chrono::duration<double>&, const std::chrono::duration<double>&) const;
     void calc_nu(Model<RealScalar>& model);
     RealScalar calc_iterate_norm(Model<RealScalar>& model, const RealScalar& mu);
 public:
-    Point<RealScalar> solve(Model<RealScalar>& model, const RealScalar& tol_gap, const RealScalar& tol_fail, const int max_steps = 1000);
+    Point<RealScalar> solve(Model<RealScalar>& model, const RealScalar& tol_gap,
+        const RealScalar& tol_fail, const int max_steps = 1000, const int record_every = 100);
 };
 
 template<typename RealScalar>
@@ -37,11 +38,12 @@ void Solver<RealScalar>::print_header() const{
     std::cout << std::left << std::setw(14) << "mu";
     std::cout << std::left << std::setw(8)  << "istep";
     std::cout << std::left << std::setw(14) << "upd time (s)";
-    std::cout << std::left << std::setw(12) << "mat time (s)";
+    std::cout << std::left << std::setw(14) << "mat time (s)";
+    std::cout << std::left << std::setw(14) << "tot time (s)";
     std::cout << std::endl;
 }
 template<typename RealScalar>
-void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time) const{
+void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const std::chrono::duration<double>& upd_time, const std::chrono::duration<double>& mat_time, const std::chrono::duration<double>& tot_time) const{
     std::cout << std::left << std::setw(8)  << steps_taken;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << model.c.dot(p.x) / p.tau;
     std::cout << std::left << std::setw(16) << std::scientific << std::setprecision(6) << (- model.h.dot(p.z) - model.b.dot(p.y)) / p.tau;
@@ -50,12 +52,13 @@ void Solver<RealScalar>::print_row(Model<RealScalar>& model, int istep, const st
     std::cout << std::left << std::setw(14) << std::scientific << std::setprecision(4) << mu;
     std::cout << std::left << std::setw(8)  << istep;
     std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << upd_time.count();
-    std::cout << std::left << std::setw(12) << std::fixed << std::setprecision(3) << mat_time.count();
+    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << mat_time.count();
+    std::cout << std::left << std::setw(14) << std::fixed << std::setprecision(3) << tot_time.count();
     std::cout << std::endl;
 }
 
 template<typename RealScalar>
-Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const RealScalar& tol_gap, const RealScalar& tol_fail, const int max_steps){
+Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const RealScalar& tol_gap, const RealScalar& tol_fail, const int max_steps, const int record_every){
     using Matrix = Eigen::Matrix<RealScalar, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Vector<RealScalar, Eigen::Dynamic>;
     set_init_point(model);
@@ -73,6 +76,7 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
     steps_taken = 0;
     print_header();
     std::chrono::duration<double> total_time(0);
+    int scnt = 0;
     while(p.s.dot(p.z) + p.tau * p.kap > tol_gap){
         if(steps_taken >= max_steps){
             std::cout << "Exiting because max iterations were reached" << std::endl;
@@ -91,9 +95,12 @@ Point<RealScalar> Solver<RealScalar>::solve(Model<RealScalar>& model, const Real
         model.cone().updatePoint(p.s);
         mu *= RealScalar(1) - nu;
         auto upd_end = std::chrono::high_resolution_clock::now();
-        ++steps_taken;
+        ++steps_taken, ++scnt;
         total_time += upd_end - upd_start + mat_end - mat_start;
-        print_row(model, istep, upd_end - upd_start, mat_end - mat_start);
+        if(scnt == record_every){
+            print_row(model, istep, upd_end - upd_start, mat_end - mat_start, total_time);
+            scnt = 0;
+        }
     }
     std::cout << "------------------------------------------------------" << std::endl;
     std::cout << "Iterations taken = " << steps_taken << std::endl;
