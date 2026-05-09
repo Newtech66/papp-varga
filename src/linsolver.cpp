@@ -25,6 +25,7 @@ LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point
 
 template<typename prec_type>
 void LinearSolver<prec_type>::compute_aux_matrices(Model<prec_type>& model, const Point<prec_type>& q){
+    // https://stackoverflow.com/questions/55845567/how-to-parallelize-a-plain-for-loop-using-the-c-standard-library
     auto ints = boost::irange<int>(0, model.G.cols());
     std::for_each_n(std::execution::par_unseq, ints.begin(), ints.size(), [&](int colIndex){
         GtHG(Eigen::placeholders::all, colIndex).noalias() = Gt * model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));

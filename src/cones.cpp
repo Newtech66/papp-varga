@@ -2,7 +2,7 @@
 
 template<typename prec_type>
 ConeProduct<prec_type>::ConeProduct(cone_array<prec_type>& cones){
-    this->cones.insert(this->cones.end(), std::make_move_iterator(cones.begin()), std::make_move_iterator(cones.end()));
+    std::swap(this->cones, cones);
     this->barrier_parameter = 0;
     this->num_params = 0;
     for(auto&& cone : this->cones){
