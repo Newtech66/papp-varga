@@ -6,6 +6,7 @@
 #include "model.hpp"
 #include "point.hpp"
 #include "linsolver.hpp"
+#include <Eigen/QR>
 
 using ms = std::chrono::milliseconds;
 

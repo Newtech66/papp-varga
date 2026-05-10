@@ -19,7 +19,7 @@ if(${OpenMP_FOUND})
     target_link_libraries(papp-varga PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-target_compile_features(papp-varga PRIVATE cxx_std_17)
+target_compile_features(papp-varga PRIVATE cxx_std_20)
 target_compile_options(papp-varga PRIVATE -march=native)
 target_compile_options(papp-varga PRIVATE -O3)
 target_compile_options(papp-varga PRIVATE -fdiagnostics-color=always)

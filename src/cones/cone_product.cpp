@@ -1,4 +1,4 @@
-#include "cones.hpp"
+#include "cone_product.hpp"
 
 template<typename prec_type>
 ConeProduct<prec_type>::ConeProduct(cone_array<prec_type>& cones){

@@ -14,7 +14,7 @@ LinearSolver<prec_type>::LinearSolver(const Model<prec_type>& model, const Point
     G = model.G.sparseView();
     Gt = model.G.transpose().sparseView();
     At = model.A.transpose().sparseView();
-    GtHG.resize(G.cols(), G.cols());
+    HG.resize(G.rows(), G.cols());
     rx.resize(model.n, 3); ry.resize(model.p, 3); rz.resize(model.d, 3);
         x.resize(model.n, 3);  y.resize(model.p, 3);  z.resize(model.d, 3);
     rx.col(1) = model.c; rx.col(2) = q.x;
@@ -28,9 +28,9 @@ void LinearSolver<prec_type>::compute_aux_matrices(Model<prec_type>& model, cons
     // https://stackoverflow.com/questions/55845567/how-to-parallelize-a-plain-for-loop-using-the-c-standard-library
     auto ints = boost::irange<int>(0, model.G.cols());
     std::for_each_n(std::execution::par_unseq, ints.begin(), ints.size(), [&](int colIndex){
-        GtHG(Eigen::placeholders::all, colIndex).noalias() = Gt * model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));
+        HG(Eigen::placeholders::all, colIndex).noalias() = model.cone().hvp(model.G(Eigen::placeholders::all, colIndex));
     });
-    lltG.compute(GtHG);
+    lltG.compute(Gt * HG);
     lltA.compute(A * lltG.solve(model.A.transpose()));
     GtHrz1.noalias() = Gt * model.cone().hvp(rz.col(1));
     GtHrz2.noalias() = Gt * model.cone().hvp(rz.col(2));
