@@ -68,6 +68,3 @@ optVector<prec_type> ConeProduct<prec_type>::ihvp(const Eigen::Ref<const optVect
         }
         return ihvp;
 }
-
-template class Cone<double>;
-template class ConeProduct<double>;

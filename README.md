@@ -57,8 +57,6 @@ Im(vec(X))
 \end{bmatrix}
 $$
 
-The inverse functions $unvec(x)$ and $unsplit(x)$ are also provided.
-
 The primal variable vector $x$ and primal cost vector $c$ are real. You have to separately equate the real and complex parts of your linear equality constraints.
 
 You have to split/vectorize $G$ and $h$ appropriately. For example, if you have constraints like
@@ -110,21 +108,22 @@ The input format of a file is given below. `<(type) name: description>` gives th
 
 ## Supported cones:
 
-The list of supported cones and the respective cone parameters are given below. The left hand side of an equality is the format of the cone specification. The right hand side is the cone description. Anything in `[...]` is optional.
+The list of supported cones and the respective cone parameters are given below. The left hand side of an equality is the format of the cone specification. The right hand side is the cone description.
 
-- `REALPSD/COMPLEXPSD n = Cone of symmetric/Hermitian n x n positive semidefinite matrices`
-- ` n = Cone of Hermitian n x n positive semidefinite matrices`
-- `DIAGONALPSD n = Cone of diagonal n x n positive semidefinite matrices`
-- `REALLOGPERSPECEPI/COMPLEXLOGPERSPECEPI n = Cone of symmetric/Hermitian n x n positive semidefinite matrices (T, X, Y) satisfying`
+- `REALPSD|COMPLEXPSD n`: Cone of symmetric/Hermitian $n \times n$ positive semidefinite matrices
+- `NONNEGORTHANT n`: Cone of non-negative vectors of length $n$
+- `REALLPE|COMPLEXLPE n`: Cone of symmetric/Hermitian $n \times n$ positive semidefinite matrices $(T, X, Y)$ satisfying
 
 $$
 T \succeq X^{\frac{1}{2}}\log{(X^{\frac{1}{2}}Y^{-1}X^{\frac{1}{2}})}X^{\frac{1}{2}}
 $$
 
-## Build information:
+## Supported algorithms:
 
-This solver works with arbitrary precision numbers. You need Boost, GMP, Eigen, MPFR C++ to build this.
+The list of available solver algorithms are given below.
 
-## How to use:
+- Nesterov-Todd (symmetric cones only)
+- Skajaa-Ye
+- Papp-Varga
 
-`papp_varga path/to/input/file`
+## Example:
