@@ -4,14 +4,6 @@
 #include "common_typedefs.hpp"
 #include <Eigen/Cholesky>
 
-class PositiveSemidefiniteParameters : public ConeParameters{
-protected:
-    int matrix_size;
-public:
-    void parse_args(const std::string& args) override;
-    int matrixSize(){return matrix_size;}
-};
-
 template<typename prec_type, bool complex_type>
 class PositiveSemidefinite : public Cone{
 protected:

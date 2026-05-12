@@ -2,7 +2,7 @@
 #define CONE_PRODUCT_CONES_H
 #include <memory>
 #include <Eigen/Core>
-#include "cone.hpp"
+#include "cone_parameters.hpp"
 #include "common_typedefs.hpp"
 #include "cone_dispatch.hpp"
 #include <vector>
@@ -15,6 +15,13 @@ protected:
     bool is_symmetric = true;
 public:
     ConeProduct() = default;
+    // https://stackoverflow.com/questions/8164567/how-to-make-my-custom-type-to-work-with-range-based-for-loops
+    auto begin(){return cones.begin();}
+    auto end(){return cones.end();}
+    auto begin(){return cones.cbegin();}
+    auto end(){return cones.cend();}
+    auto begin() const {return cones.begin();}
+    auto end() const {return cones.end();}
     void addCone(std::string cone_id, std::unique_ptr<ConeParameters> cone_params){
         cones.emplace_back(cone_id, std::move(cone_params));
         is_symmetric &= cone_is_symmetric(cone_id);
