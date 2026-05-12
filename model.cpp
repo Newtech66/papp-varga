@@ -1,6 +1,7 @@
 #ifndef MODEL_PAPP_VARGA_H
 #define MODEL_PAPP_VARGA_H
 #include "cones.cpp"
+#include <Eigen/SVD>
 
 template<typename RealScalar>
 class Model{
@@ -21,14 +22,16 @@ public:
           const Eigen::Ref<const Matrix>& A, const Eigen::Ref<const Vector>& b,
           const Eigen::Ref<const Matrix>& G, const Eigen::Ref<const Vector>& h,
           std::vector<std::unique_ptr<Cone<RealScalar>>>& cones){
-            this->A = A;
+            Eigen::BDCSVD<Matrix, Eigen::ComputeThinU> svd;
+            svd.compute(A);
+            this->A = svd.matrixU().leftCols(svd.rank()).transpose() * A;
             this->G = G;
-            this->b = b;
+            this->b = svd.matrixU().leftCols(svd.rank()).transpose() * b;
             this->h = h;
             this->c = c;
-            this->n = c.rows();
-            this->p = b.rows();
-            this->d = h.rows();
+            this->n = this->c.rows();
+            this->p = this->b.rows();
+            this->d = this->h.rows();
             this->coneprod = ConeProduct<RealScalar>(cones);
           }
     void print_model() const;
@@ -41,7 +44,7 @@ void Model<RealScalar>::print_model() const{
     std::cout << "Model parameters:" << std::endl;
     std::cout << "-------------------" << std::endl;
     std::cout << "Number of primal variables = " << n << std::endl;
-    std::cout << "Number of linear constraints = " << p << std::endl;
+    std::cout << "Number of reduced linear constraints = " << p << std::endl;
     std::cout << "Number of conic variables = " << d << std::endl;
     std::cout << "-------------------" << std::endl;
 }
