@@ -25,6 +25,9 @@ public:
             Eigen::BDCSVD<Matrix, Eigen::ComputeThinU> svd;
             svd.compute(A);
             this->A = svd.matrixU().leftCols(svd.rank()).transpose() * A;
+            // Explain why multiplying with U^T does not change the number of non-zeros in A
+            std::cout << "Non-zeros in A: " << A.cwiseGreaterOrEqual(1e-8).count() << std::endl;
+            std::cout << "Non-zeros in this->A: " << A.cwiseGreaterOrEqual(1e-8).count() << std::endl;
             this->G = G;
             this->b = svd.matrixU().leftCols(svd.rank()).transpose() * b;
             this->h = h;
