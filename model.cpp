@@ -24,6 +24,8 @@ public:
           std::vector<std::unique_ptr<Cone<RealScalar>>>& cones){
             Eigen::BDCSVD<Matrix, Eigen::ComputeThinU> svd;
             svd.compute(A);
+            // From user Antoine Jego on Eigen Discord:
+            // "You can compute some norm of |A-UDV| to know if your low-rank approximation is correct"
             this->A = svd.matrixU().leftCols(svd.rank()).transpose() * A;
             // Explain why multiplying with U^T does not change the number of non-zeros in A
             std::cout << "Non-zeros in A: " << A.cwiseGreaterOrEqual(1e-8).count() << std::endl;
