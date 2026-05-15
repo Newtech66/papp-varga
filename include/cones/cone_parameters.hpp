@@ -1,15 +1,13 @@
 #ifndef CONE_PARAMETERS_CONES_H
 #define CONE_PARAMETERS_CONES_H
 #include <string>
+#include <concepts>
 
-/// @brief Base class for parameters that depend on a specific instance of a cone.
-class ConeParameters{
-protected:
-    int barrier_parameter, num_variables;
-public:
-    virtual void parse_args(const std::string& args) = 0;
-    virtual int barrierParameter() = 0;
-    virtual int numVariables() = 0;
+template<typename T>
+concept ConeParameters = requires(T a){
+    {a.isSymmetric()} -> std::same_as<bool>;
+    {a.isComplex()} -> std::same_as<bool>;
+    {a.coneName()} -> std::same_as<std::string>;
 };
 
 /*

@@ -1,207 +1,150 @@
 #ifndef CONE_PRODUCT_CONES_H
 #define CONE_PRODUCT_CONES_H
 #include <Eigen/Core>
-#include "cone_parameters.hpp"
+#include "cone.hpp"
+#include "psd_parameters.hpp"
 #include "common_typedefs.hpp"
 #include <vector>
 #include <string>
-#include <format>
 #include <array>
-#include <map>
 
 enum class ConeTypes {
     REALPSD = 0,
     COMPLEXPSD = 1,
-    REALLPE = 2,
-    COMPLEXLPE = 3,
-    NONNEGORTH = 4
-};
-
-const std::map<ConeTypes, std::string> cone_ids{
-    {ConeTypes::REALPSD, "REALPSD"},
-    {ConeTypes::COMPLEXPSD, "COMPLEXPSD"},
-    {ConeTypes::REALLPE, "REALLPE"},
-    {ConeTypes::COMPLEXLPE, "COMPLEXLPE"},
-    {ConeTypes::NONNEGORTH, "NONNEGORTH"}
 };
 
 template<typename prec_type>
 class ConeProduct{
 private:
-    static constexpr int cone_type_count = 5;
-    std::vector<RealPSDParameters> real_psd;
-    std::vector<ComplexPSDParameters> complex_psd;
-    std::vector<RealLPEParameters> real_lpe;
-    std::vector<ComplexLPEParameters> complex_lpe;
-    std::vector<NonNegOrthParameters> nonneg_orth;
+    static constexpr int cone_type_count = 2;
+    std::vector<PSDParameters> real_psd, complex_psd;
 protected:
     std::vector<ConeTypes> cones;
-    bool is_symmetric = true;
+    int barrier_parameter = 0;
 public:
     ConeProduct() = default;
-    template<typename cone_type>
-    void addCone(ConeTypes cone_id, cone_type cone_params){
+    // concept here?
+    template<ConeTypes cone_id>
+    void addCone(auto cone_params){
         using enum ConeTypes;
         cones.push_back(cone_id);
-        switch(cone_id){
-            case REALPSD:
-                real_psd.push_back(cone_params);
-                break;
-            case COMPLEXPSD:
-                complex_psd.push_back(cone_params);
-                break;
-            case REALLPE:
-                real_lpe.push_back(cone_params);
-                break;
-            case COMPLEXLPE:
-                complex_lpe.push_back(cone_params);
-                break;
-            case NONNEGORTH:
-                nonneg_orth.push_back(cone_params);
-                break;
-        }
+        if constexpr (cone_id == REALPSD)   real_psd.push_back(cone_params);
+        else if constexpr(cone_id == COMPLEXPSD) complex_psd.push_back(cone_params);
+        barrier_parameter += cone_params.barrierParameter();
     }
-    std::string coneName() const{
+    int barrierParameter() const{return barrier_parameter;}
+    // probably should use a concept here to prevent a bad f being passed
+    template<typename transform_func>
+    void func_over_cones(transform_func f){
         using enum ConeTypes;
-        std::string name("Product of the following cones:\n");
         std::array<int, cone_type_count> counter{0};
         for(const auto& cone_id: cones){
             switch(cone_id){
                 case REALPSD:
-                    name += real_psd[counter[cone_id]].coneName() + "\n";
+                    f.template operator()<REALPSD, PSD<prec_type, false>>(real_psd[counter[static_cast<int>(cone_id)]]);
                     break;
                 case COMPLEXPSD:
-                    name += complex_psd[counter[cone_id]].coneName() + "\n";
-                    break;
-                case REALLPE:
-                    name += real_lpe[counter[cone_id]].coneName() + "\n";
-                    break;
-                case COMPLEXLPE:
-                    name += complex_lpe[counter[cone_id]].coneName() + "\n";
-                    break;
-                case NONNEGORTH:
-                    name += nonneg_orth[counter[cone_id]].coneName() + "\n";
+                    f.template operator()<COMPLEXPSD, PSD<prec_type, true>>(complex_psd[counter[static_cast<int>(cone_id)]]);
                     break;
             }
-            counter[cone_id]++;
+            counter[static_cast<int>(cone_id)]++;
         }
     }
-    template<typename Derived>
-    optVector<prec_type> grad(const Eigen::MatrixBase<Derived>& p){
+    // only symmetric cones should be listed here
+    template<typename transform_func>
+    void func_over_symmetric_cones(transform_func f){
+        using enum ConeTypes;
+        std::array<int, cone_type_count> counter{0};
+        for(const auto& cone_id: cones){
+            switch(cone_id){
+                case REALPSD:
+                    f.template operator()<REALPSD, PSD<prec_type, false>>(real_psd[counter[static_cast<int>(cone_id)]]);
+                    break;
+                case COMPLEXPSD:
+                    f.template operator()<COMPLEXPSD, PSD<prec_type, true>>(complex_psd[counter[static_cast<int>(cone_id)]]);
+                    break;
+            }
+            counter[static_cast<int>(cone_id)]++;
+        }
+    }
+    std::string coneName(){
+        using enum ConeTypes;
+        std::string name("Product of the following cones:\n");
+        auto add_name = [&name]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            name += cone_params.coneName() + "\n";
+        };
+        func_over_cones(add_name);
+        return name;
+    }
+    optVector<prec_type> grad(const optVector<prec_type>& p){
         using enum ConeTypes;
         optVector<prec_type> out;
         out.resize(p.size());
-        std::array<int, cone_type_count> counter{0};
-        for(int cpos = 0, nvar;const auto& cone_id: cones){
-            switch(cone_id){
-                case REALPSD:
-                    auto& cone_params = real_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, false>::grad(p, cone_params);
-                    break;
-                case COMPLEXPSD:
-                    auto& cone_params = complex_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, true>::grad(p, cone_params);
-                    break;
-                case REALLPE:
-                    auto& cone_params = real_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, false>::grad(p, cone_params);
-                    break;
-                case COMPLEXLPE:
-                    auto& cone_params = complex_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, true>::grad(p, cone_params);
-                    break;
-                case NONNEGORTH:
-                    auto& cone_params = nonneg_orth[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = NonNegOrth<prec_type>::grad(p, cone_params);
-                    break;
-            }
+        int cpos = 0;
+        auto cone_grad = [&p, &out, &cpos]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            int nvar = cone_params.numVariables();
+            out(Eigen::seqN(cpos, nvar)) = U::grad(p, cone_params);
             cpos += nvar;
-            counter[cone_id]++;
-        }
+        };
+        func_over_cones(cone_grad);
         return out;
     }
-    template<typename Derived>
-    optVector<prec_type> hvp(const Eigen::MatrixBase<Derived>& p, const Eigen::MatrixBase<Derived>& vecs){
+    optVector<prec_type> hvp(const optVector<prec_type>& p, const optMatrix<prec_type>& vecs){
         using enum ConeTypes;
         optVector<prec_type> out;
         out.resize(p.size());
-        std::array<int, cone_type_count> counter{0};
-        for(int cpos = 0, nvar;const auto& cone_id: cones){
-            switch(cone_id){
-                case REALPSD:
-                    auto& cone_params = real_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, false>::hvp(p, vecs, cone_params);
-                    break;
-                case COMPLEXPSD:
-                    auto& cone_params = complex_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, true>::hvp(p, vecs, cone_params);
-                    break;
-                case REALLPE:
-                    auto& cone_params = real_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, false>::hvp(p, vecs, cone_params);
-                    break;
-                case COMPLEXLPE:
-                    auto& cone_params = complex_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, true>::hvp(p, vecs, cone_params);
-                    break;
-                case NONNEGORTH:
-                    auto& cone_params = nonneg_orth[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = NonNegOrth<prec_type>::hvp(p, vecs, cone_params);
-                    break;
-            }
+        int cpos = 0;
+        auto cone_hvp = [&p, &out, &cpos]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            int nvar = cone_params.numVariables();
+            out(Eigen::seqN(cpos, nvar)) = U::hvp(p, vecs, cone_params);
             cpos += nvar;
-            counter[cone_id]++;
-        }
+        };
+        func_over_cones(cone_hvp);
         return out;
     }
-    template<typename Derived>
-    optVector<prec_type> ihvp(const Eigen::MatrixBase<Derived>&, const Eigen::MatrixBase<Derived>&){
+    optVector<prec_type> ihvp(const optVector<prec_type>& p, const optMatrix<prec_type>& vecs){
         using enum ConeTypes;
         optVector<prec_type> out;
         out.resize(p.size());
-        std::array<int, cone_type_count> counter{0};
-        for(int cpos = 0, nvar;const auto& cone_id: cones){
-            switch(cone_id){
-                case REALPSD:
-                    auto& cone_params = real_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, false>::ihvp(p, vecs, cone_params);
-                    break;
-                case COMPLEXPSD:
-                    auto& cone_params = complex_psd[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = PSD<prec_type, true>::ihvp(p, vecs, cone_params);
-                    break;
-                case REALLPE:
-                    auto& cone_params = real_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, false>::ihvp(p, vecs, cone_params);
-                    break;
-                case COMPLEXLPE:
-                    auto& cone_params = complex_lpe[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = LPE<prec_type, true>::ihvp(p, vecs, cone_params);
-                    break;
-                case NONNEGORTH:
-                    auto& cone_params = nonneg_orth[counter[cone_id]];
-                    nvar = cone_params.numVariables();
-                    out(Eigen::seqN(cpos, nvar)) = NonNegOrth<prec_type>::ihvp(p, vecs, cone_params);
-                    break;
-            }
+        int cpos = 0;
+        auto cone_ihvp = [&p, &out, &cpos]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            int nvar = cone_params.numVariables();
+            out(Eigen::seqN(cpos, nvar)) = U::ihvp(p, vecs, cone_params);
             cpos += nvar;
-            counter[cone_id]++;
-        }
+        };
+        func_over_cones(cone_ihvp);
         return out;
+    }
+    // these methods are only implemented by symmetric cones
+    void get_nt_scaling(const optVector<prec_type>& s, const optVector<prec_type>& z,
+        std::vector<optMatrix<prec_type>>& scaling_matrix, optVector<prec_type>& scaling_point, optVector<prec_type>& scaled_variable){
+        using enum ConeTypes;
+        scaling_point.resize(s.rows());
+        scaled_variable.resize(s.rows());
+        int cpos = 0;
+        int i = 0;
+        auto sym_cone_get_nt_scaling = [&s, &z, &scaling_matrix, &scaling_point, &scaled_variable, &cpos, &i]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            int nvar = cone_params.numVariables();
+            idxs = Eigen::seqN(cpos, nvar);
+            scaling_matrix[i].resize(nvar, nvar);
+            U::get_nt_scaling(s, z, scaling_matrix[i], scaling_point(idxs), scaled_variable(idxs), cone_params);
+            cpos += nvar;
+            i++;
+        };
+        func_over_symmetric_cones(sym_cone_get_nt_scaling);
+    }
+    prec_type get_nt_step_length(const optVector<prec_type>& s, const optVector<prec_type>& z, const optVector<prec_type>& scaled_variable){
+        using enum ConeTypes;
+        std::vector<prec_type> alphas;
+        int cpos = 0;
+        auto sym_cone_get_nt_step_length = [&s, &z, &scaled_variable, &cpos]<ConeTypes cone_id, Cone U>(auto& cone_params){
+            int nvar = cone_params.numVariables();
+            idxs = Eigen::seqN(cpos, nvar);
+            alphas.push_back(U::get_nt_step_length(s, z, scaled_variable(idxs), cone_params));
+            cpos += nvar;
+        };
+        func_over_symmetric_cones(sym_cone_get_nt_step_length);
+        return *std::min_element(alphas.begin(), alphas.end());
     }
 };
 

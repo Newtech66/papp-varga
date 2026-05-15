@@ -3,32 +3,20 @@
 #include <concepts>
 #include "common_typedefs.hpp"
 
-
-template<typename T>
-concept Cone = requires(T cone){
-    {cone.isSymmetric()} -> std::same_as<bool>;
-    {cone.isComplex()} -> std::same_as<bool>;
-    {cone.coneId()} -> std::same_as<std::string>;
-    {cone.coneName()} -> std::same_as<std::string>;
-};
-
 template<typename T, typename prec_type>
-concept SymmetricCone = Cone<T> and
-requires(T cone, const optVector<prec_type>& a, const optVector<prec_type>& b){
+concept Cone = requires(T cone, const optVector<prec_type>& a, const optVector<prec_type>& b){
+    {cone.grad(a)} -> std::same_as<optVector<prec_type>>;
     {cone.hvp(a, b)} -> std::same_as<optVector<prec_type>>;
     {cone.ihvp(a, b)} -> std::same_as<optVector<prec_type>>;
     {cone.too(a, b)} -> std::same_as<optVector<prec_type>>;
+};
+
+template<typename T, typename prec_type>
+concept SymmetricCone = Cone<T, prec_type> and
+requires(T cone, const optVector<prec_type>& a, const optVector<prec_type>& b){
     {cone.update_nt_scaling(a, b)};
     {cone.circle_product(a, b)};
     {cone.diamond_product(a, b)};
-};
-
-template<typename T, typename prec_type>
-concept NonsymmetricCone = Cone<T> and
-requires(T cone, const optVector<prec_type>& a, const optVector<prec_type>& b){
-    {cone.hvp(a, b)} -> std::same_as<optVector<prec_type>>;
-    {cone.ihvp(a, b)} -> std::same_as<optVector<prec_type>>;
-    {cone.too(a, b)} -> std::same_as<optVector<prec_type>>;
 };
 
 /*

@@ -4,9 +4,6 @@
 #include "esde_state.hpp"
 #include "problem_data.hpp"
 #include "esde_newton_solver.hpp"
-#include <Eigen/Eigenvalues>
-#include <Eigen/Cholesky>
-#include <Eigen/SVD>
 #include <algorithm>
 
 template<typename prec_type>
@@ -21,63 +18,17 @@ private:
     // Stored as a joined vector instead of individual subvectors.
     optVector<prec_type> scaled_variable;
 
-    // Eigenvalue decompositions
-    Eigen::SelfAdjointEigenSolver<prec_type> sym_eigsolver;
-    Eigen::SelfAdjointEigenSolver<std::complex<prec_type>> her_eigsolver;
-
-    // Singular value decompositions
-    Eigen::BDCSVD<prec_type, Eigen::ComputeThinV> sym_svd;
-    Eigen::BDCSVD<std::complex<prec_type>, Eigen::ComputeThinV> her_svd;
-
-    // LDLT Cholesky decompositions
-    Eigen::LDLT<prec_type> sym_ldlt;
-    Eigen::LDLT<std::complex<prec_type>> her_ldlt;
-
     // Parameter for central path, starts at 1 and goes to 0 at optimum.
     prec_type mu;
  
     optVector<prec_type> findPredictionDirection(const ESDEState<prec_type>&, const ProblemData<prec_type>&);
     optVector<prec_type> findCombinedDirection(const ESDEState<prec_type>&, const ProblemData<prec_type>&, const ESDEState<prec_type>&, const prec_type&);
-    prec_type findLargestStepSize(const ESDEState<prec_type>&, const ProblemData<prec_type>&, const ESDEState<prec_type>&);
-
 public:
     NesterovTodd() = default;
-    void updateInternalState(const ESDEState<prec_type>&, const ProblemData<prec_type>&);
     optVector<prec_type> step(const ESDEState<prec_type>&, const ProblemData<prec_type>&);
-    template<typename Derived>
-    optVector<prec_type> hvp(const Eigen::MatrixBase<Derived>&);
+    template<typename T>
+    optVector<prec_type> hvp(const Eigen::MatrixBase<T>&);
 };
-
-template<typename prec_type>
-prec_type NesterovTodd<prec_type>::findLargestStepSize(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& dir){
-    std::vector<prec_type> alphak;
-    for(int cpos = 0;auto& [cone_id, cone_params]: problem_data.cones){
-        int nvar = cone_params.numVariables();
-        if(cone_id == "REALPSD"){
-            auto lis = lambda[cpos].cwiseInverse().cwiseSqrt().asDiagonal();
-            auto rhok = lis * vec_to_sym_mat(dir.s(idxs)) * lis;
-            auto sigk = lis * vec_to_sym_mat(dir.z(idxs)) * lis;
-            sym_eigsolver.compute(rhok);
-            prec_type gams = sym_eigsolver.eigenvalues()(0);
-            sym_eigsolver.compute(sigk);
-            prec_type gamz = sym_eigsolver.eigenvalues()(0);
-            alphak.push_back(1 / std::max({0, -gams, -gamz}));
-        }else if(cone_id == "COMPLEXPSD"){
-            auto lis = lambda(idxs).cwiseInverse().cwiseSqrt().asDiagonal();
-            auto rhok = lis * vec_to_her_mat(dir.s(idxs)) * lis;
-            auto sigk = lis * vec_to_her_mat(dir.z(idxs)) * lis;
-            her_eigsolver.compute(rhok);
-            prec_type gams = her_eigsolver.eigenvalues()(0);
-            her_eigsolver.compute(sigk);
-            prec_type gamz = her_eigsolver.eigenvalues()(0);
-            alphak.push_back(1 / std::max({0, -gams, -gamz}));
-        }else{
-            throw std::invalid_argument("Received invalid cone in method findLargestStepSize of NesterovTodd stepper");
-        }
-        cpos += 1;
-    }
-    return *std::min_element(alphak.begin(), alphak.end());
-}
 template<typename prec_type>
 optVector<prec_type> NesterovTodd<prec_type>::findPredictionDirection(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data){
     ESDEState<prec_type> rhs;
@@ -95,88 +46,30 @@ optVector<prec_type> NesterovTodd<prec_type>::findPredictionDirection(const ESDE
 }
 template<typename prec_type>
 optVector<prec_type> NesterovTodd<prec_type>::findCombinedDirection(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& pred_dir, const prec_type& centering_parameter){
-    dir.x = problem_data.A.transpose() * esde_state.y + problem_data.G.transpose() * esde_state.z + problem_data.c * esde_state.tau;
-    dir.y = -problem_data.A * esde_state.x + problem_data.b * esde_state.tau;
-    dir.z = -problem_data.G * esde_state.x + problem_data.h * esde_state.tau - esde_state.s;
-    dir.tau = -problem_data.c.dot(esde_state.x) - problem_data.b.dot(esde_state.y) - problem_data.h.dot(esde_state.z) - esde_state.kap;
-    dir.x *= prec_type(1) - centering_parameter;
-    dir.y *= prec_type(1) - centering_parameter;
-    dir.z *= prec_type(1) - centering_parameter;
-    dir.tau *= prec_type(1) - centering_parameter;
-    dir.s.resize(esde_state.s.rows());
-    int cpos = 0;
-    for(auto& [cone_id, cone_params]: problem_data.cones){
-        int nvar = cone_params.numVariables();
-        auto idxs = Eigen::seqN(cpos, nvar);
-        if(cone_id == "REALPSD"){
-            optMatrix<prec_type> W = vec_to_sym_mat(scaling_matrix(idxs));
-            sym_ldlt.compute(W);
-            dir.s(idxs) = W.transpose() * (-lambda(idxs) - PositiveSemidefinite<prec_type, false>::diamond_product(lambda(idxs), ldlt.solve()))
-        }else if(cone_id == "COMPLEXPSD"){
-
-        }else{
-            throw std::invalid_argument("Received invalid cone in method findCombinedDirection of NesterovTodd stepper");
-        }
-        cpos += nvar;
-    }
-    dir.kap = -esde_state.tau * esde_state.kap -pred_dir.tau * pred_dir.kap + centering_parameter * mu;
-    return esde_newton_solver.solve(problem_data, dir, *this);
+    // TODO: This whole function
+    ESDEState<prec_type> rhs;
+    rhs.x = problem_data.A.transpose() * esde_state.y + problem_data.G.transpose() * esde_state.z + problem_data.c * esde_state.tau;
+    rhs.y = -problem_data.A * esde_state.x + problem_data.b * esde_state.tau;
+    rhs.z = -problem_data.G * esde_state.x + problem_data.h * esde_state.tau - esde_state.s;
+    rhs.tau = -problem_data.c.dot(esde_state.x) - problem_data.b.dot(esde_state.y) - problem_data.h.dot(esde_state.z) - esde_state.kap;
+    rhs.x *= prec_type(1) - centering_parameter;
+    rhs.y *= prec_type(1) - centering_parameter;
+    rhs.z *= prec_type(1) - centering_parameter;
+    rhs.tau *= prec_type(1) - centering_parameter;
+    // TODO: have to set rhs.s
+    rhs.kap = -esde_state.tau * esde_state.kap -pred_rhs.tau * pred_rhs.kap + centering_parameter * mu;
+    return solve_newton_system(esde_state, problem_data, rhs);
 }
 template<typename prec_type>
 optVector<prec_type> NesterovTodd<prec_type>::step(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data){
-    updateInternalState(esde_state, problem_data);
-    optVector<prec_type> pred_dir = findPredictionDirection(esde_state, problem_data);
-    prec_type alpha_p = findLargestStepSize(esde_state, problem_data, pred_dir);
+    problem_data.cones.get_nt_scaling(esde_state.s, esde_state.z, scaling_matrix, scaling_point, scaled_variable);
+    mu = (scaled_variable.dot(scaled_variable) + esde_state.tau * esde_state.kap) / (problem_data.cones.barrierParameter() + 1);
+    ESDEState<prec_type> pred_dir = findPredictionDirection(esde_state, problem_data);
+    prec_type alpha_p = problem_data.cones.get_nt_step_length(pred_dir.s, pred_dir.z, scaled_variable);
     prec_type centering_parameter = (prec_type(1) - alpha_p) * (prec_type(1) - alpha_p) * (prec_type(1) - alpha_p);
-    optVector<prec_type> comb_dir = findCombinedDirection(esde_state, problem_data, centering_parameter);
-    prec_type alpha = findLargestStepSize(esde_state, problem_data, comb_dir);
+    optVector<prec_type> comb_dir = findCombinedDirection(esde_state, problem_data, pred_dir, centering_parameter);
+    prec_type alpha = problem_data.cones.get_nt_step_length(comb_dir.s, comb_dir.z, scaled_variable);
     return prec_type(0.99) * alpha * comb_dir;
-}
-template<typename prec_type>
-void NesterovTodd<prec_type>::updateInternalState(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data){
-    for(int cpos = 0, nvar;auto& cone_data: problem_data.cones){
-        int nvar = cone_params.numVariables();
-        auto idxs = Eigen::seqN(cpos, nvar);
-        if(cone_id == "REALPSD"){
-            auto Sk = vec_to_sym_mat(esde_state.s(idxs));
-            auto Zk = vec_to_sym_mat(esde_state.z(idxs));
-            // Find scaling point
-            sym_eigsolver.compute(Sk);
-            auto Skhalf = sym_eigsolver.operatorSqrt();
-            auto Skihalf = sym_eigsolver.operatorInverseSqrt();
-            sym_eigsolver.compute(Skhalf * Zk * Skhalf);
-            scaling_point(idxs) = sym_mat_to_vec(Skihalf * sym_eigsolver.operatorSqrt() * Skihalf);
-            // Find scaling matrix and lambda
-            sym_ldlt.compute(Sk);
-            auto L1 = sym_ldlt.matrixL();
-            sym_ldlt.compute(Zk);
-            auto L2 = sym_ldlt.matrixL();
-            sym_svd.compute(L2.conj() * L1);
-            optMatrix<prec_type> R = L1 * sym_svd.matrixV() * sym_svd.singularValues().cwiseSqrt().cwiseInverse().asDiagonal();
-            scaling_matrix(idxs) = sym_mat_to_vec(R);
-            scaling_point(idxs) = sym_mat_to
-            lambda(idxs) = sym_svd.singularValues();
-        }else if(cone_id == "COMPLEXPSD"){
-            auto Sk = vec_to_her_mat(esde_state.s(idxs));
-            auto Zk = vec_to_her_mat(esde_state.z(idxs));
-            // Find scaling point
-            her_eigsolver.compute(Sk);
-            auto Skhalf = her_eigsolver.operatorSqrt();
-            auto Skihalf = her_eigsolver.operatorInverseSqrt();
-            her_eigsolver.compute(Skhalf * Zk * Skhalf);
-            scaling_point(idxs) = her_mat_to_vec(Skihalf * her_eigsolver.operatorSqrt() * Skihalf);
-            // Find scaling matrix and lambda
-            auto L1 = Sk.llt().matrixL();
-            auto L2 = Zk.llt().matrixL();
-            her_svd.compute(L2.conj() * L1);
-            scaling_matrix(idxs) = her_mat_to_vec(L1 * her_svd.matrixV() * her_svd.singularValues().cwiseSqrt().cwiseInverse().asDiagonal());
-            lambda(idxs) = her_svd.singularValues();
-        }else{
-            throw std::invalid_argument("Received invalid cone in method updateInternalState of NesterovTodd stepper");
-        }
-        cpos += nvar;
-    }
-    mu = (lambda.dot(lambda) + esde_state.tau * esde_state.kap) / (problem_data.cones.barrierParameter() + 1);
 }
 
 #endif
