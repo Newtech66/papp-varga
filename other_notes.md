@@ -1,3 +1,5 @@
+## TODOs:
+
 - **TODO:** Use `noalias` appropriately.
 - ~~**TODO:** configure use of OpenMP~~ benchmarks indicate that openmp makes things worse in general. maybe the conjugate gradient could benefit from it idk
 - **~~TODO:~~** ~~Use `EIGEN_NO_DEBUG` to disable assertions (?)~~ no effect in benchmarks

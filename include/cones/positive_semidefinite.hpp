@@ -5,7 +5,7 @@
 #include <Eigen/Cholesky>
 
 template<typename prec_type, bool complex_type>
-class PositiveSemidefinite : public Cone{
+class PSD{
 protected:
     static const bool is_symmetric = true;
     static const bool is_complex = complex_type;
@@ -80,6 +80,7 @@ public:
         }
         return out;
     }
+    template<typename >
 };
 
 #endif

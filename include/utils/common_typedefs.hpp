@@ -1,5 +1,5 @@
-#ifndef COMMON_TYPEDEFS_PAPP_VARGA_H
-#define COMMON_TYPEDEFS_PAPP_VARGA_H
+#ifndef COMMON_TYPEDEFS_UTILS_H
+#define COMMON_TYPEDEFS_UTILS_H
 #include <Eigen/Core>
 
 template<typename prec_type>
