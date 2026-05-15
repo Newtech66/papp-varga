@@ -46,7 +46,6 @@ optVector<prec_type> NesterovTodd<prec_type>::findPredictionDirection(const ESDE
 }
 template<typename prec_type>
 optVector<prec_type> NesterovTodd<prec_type>::findCombinedDirection(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& pred_dir, const prec_type& centering_parameter){
-    // TODO: This whole function
     ESDEState<prec_type> rhs;
     rhs.x = problem_data.A.transpose() * esde_state.y + problem_data.G.transpose() * esde_state.z + problem_data.c * esde_state.tau;
     rhs.y = -problem_data.A * esde_state.x + problem_data.b * esde_state.tau;
@@ -57,11 +56,12 @@ optVector<prec_type> NesterovTodd<prec_type>::findCombinedDirection(const ESDESt
     rhs.z *= prec_type(1) - centering_parameter;
     rhs.tau *= prec_type(1) - centering_parameter;
     // TODO: have to set rhs.s
-    rhs.kap = -esde_state.tau * esde_state.kap -pred_rhs.tau * pred_rhs.kap + centering_parameter * mu;
+    rhs.kap = -esde_state.tau * esde_state.kap - pred_dir.tau * pred_dir.kap + centering_parameter * mu;
     return solve_newton_system(esde_state, problem_data, rhs);
 }
 template<typename prec_type>
 optVector<prec_type> NesterovTodd<prec_type>::step(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data){
+    update_auxiliary_matrices(problem_data);
     problem_data.cones.get_nt_scaling(esde_state.s, esde_state.z, scaling_matrix, scaling_point, scaled_variable);
     mu = (scaled_variable.dot(scaled_variable) + esde_state.tau * esde_state.kap) / (problem_data.cones.barrierParameter() + 1);
     ESDEState<prec_type> pred_dir = findPredictionDirection(esde_state, problem_data);
