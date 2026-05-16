@@ -11,6 +11,10 @@ protected:
 public:
     PSDParameters(int matrix_size, bool is_complex): matrix_size(matrix_size), is_complex(is_complex){}
     static bool isSymmetric(){return is_symmetric;}
+    int barrierParameter() const{
+        if(is_complex)  return matrix_size * (matrix_size + 1);
+        else    return matrix_size * (matrix_size + 1) / 2;
+    }
     std::string coneName() const{
         if(is_complex){
             return std::format("Cone of {0} x {0} complex Hermitian positive-semidefinite matrices", matrix_size);

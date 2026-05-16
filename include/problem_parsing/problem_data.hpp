@@ -1,9 +1,8 @@
-#ifndef MODEL_PAPP_VARGA_H
-#define MODEL_PAPP_VARGA_H
+#ifndef PROBLEM_DATA_PROBLEM_PARSING_H
+#define PROBLEM_DATA_PROBLEM_PARSING_H
 #include "cone_product.hpp"
 #include "common_typedefs.hpp"
 #include <iostream>
-#include <Eigen/QR>
 
 template<typename prec_type>
 class ProblemData{
@@ -16,7 +15,7 @@ public:
     optMatrix<prec_type> A, G;
     optVector<prec_type> b, h, c;
     int n_privar, n_lincon, n_convar;
-    const ConeProduct<prec_type> cones;
+    ConeProduct<prec_type> cones;
     ProblemData(const Eigen::Ref<const optVector<prec_type>>& c,
         const Eigen::Ref<const optMatrix<prec_type>>& A, const Eigen::Ref<const optVector<prec_type>>& b, 
         const Eigen::Ref<const optMatrix<prec_type>>& G, const Eigen::Ref<const optVector<prec_type>>& h){
@@ -25,8 +24,8 @@ public:
             this->A = A;    this->b = b;
             this->G = G;    this->h = h;
             this->n_privar = c.rows(); this->n_lincon = b.rows(); this->n_convar = h.rows();
-          }
-    void print_problem_data() const{
+    }
+    void print_problem_data(){
     std::cout << "-------------------" << std::endl;
     std::cout << "Model parameters:" << std::endl;
     std::cout << "-------------------" << std::endl;
@@ -36,7 +35,8 @@ public:
     std::cout << "-------------------" << std::endl;
     std::cout << "A has dimensions " << A.rows() << " x " << A.cols() << std::endl;
     std::cout << "G has dimensions " << G.rows() << " x " << G.cols() << std::endl;
-}
+    std::cout << cones.coneName();
+    }
 };
 
 #endif
