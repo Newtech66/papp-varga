@@ -1,9 +1,9 @@
 #include <Eigen/Core>
 #include "problem_data.hpp"
-#include "psd_parameters.hpp"
 #include "esde_state.hpp"
 #include "mat_vector_transforms.hpp"
 #include "nesterov_todd.hpp"
+#include "psd.hpp"
 #include <iostream>
 #include <format>
 
@@ -25,7 +25,7 @@ int main(){
     h.setZero();
     ProblemData<double> pd(c, A, b, G, h);
     pd.print_problem_data();
-    pd.cones.addCone<ConeTypes::REALPSD>(PSDParameters(3, false));
+    pd.cones.addCone<ConeTypes::REALPSD>(PSD<double, false>(3));
     ESDEState<double> esde_state;
     esde_state.kap = esde_state.tau = 1;
     esde_state.x = Vec::Zero(6);
