@@ -1,5 +1,6 @@
 #ifndef NESTEROV_TODD_SOLVERS_H
 #define NESTEROV_TODD_SOLVERS_H
+#include <Eigen/Core>
 #include "common_typedefs.hpp"
 #include "esde_state.hpp"
 #include "problem_data.hpp"
@@ -7,7 +8,7 @@
 #include <algorithm>
 
 template<typename prec_type>
-class NesterovTodd : ESDENewtonSolver<prec_type, NesterovTodd<prec_type>>{
+class NesterovTodd : public ESDENewtonSolver<prec_type, NesterovTodd<prec_type>>{
 private:
     // Stores a vector of scaling matrices. This is necessary because scaling matrices may be
     // nonsymmetric in general. For example for the PSD cone.
@@ -33,7 +34,7 @@ private:
         rhs.tau *= prec_type(-1);
         rhs.s = -esde_state.z;
         rhs.kap = -esde_state.tau * esde_state.kap;
-        return solve_newton_system(esde_state, problem_data, rhs, true);
+        return this->solve_newton_system(esde_state, problem_data, rhs);
     }
     ESDEState<prec_type> findCombinedDirection(const ESDEState<prec_type>& esde_state, ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& pred_dir, const prec_type& centering_parameter){
         ESDEState<prec_type> rhs;
@@ -47,11 +48,12 @@ private:
         rhs.tau *= prec_type(1) - centering_parameter;
         rhs.s = problem_data.cones.get_nt_rhs_s(pred_dir.s, pred_dir.z, scaling_matrix, scaled_variable, centering_parameter, mu);
         rhs.kap = -esde_state.tau * esde_state.kap - pred_dir.tau * pred_dir.kap + centering_parameter * mu;
-        return solve_newton_system(esde_state, problem_data, rhs, false);
+        return this->solve_newton_system(esde_state, problem_data, rhs);
     }
 public:
     NesterovTodd() = default;
     ESDEState<prec_type> step(const ESDEState<prec_type>& esde_state, ProblemData<prec_type>& problem_data){
+        this->update_auxiliary_matrices(problem_data);
         problem_data.cones.get_nt_scaling(esde_state.s, esde_state.z, scaling_matrix, scaling_point, scaled_variable);
         mu = (scaled_variable.dot(scaled_variable) + esde_state.tau * esde_state.kap) / (problem_data.cones.barrierParameter() + 1);
         ESDEState<prec_type> pred_dir = findPredictionDirection(esde_state, problem_data);
@@ -61,7 +63,7 @@ public:
         prec_type alpha = problem_data.cones.get_nt_step_length(comb_dir.s, comb_dir.z, scaled_variable);
         return prec_type(0.99) * alpha * comb_dir;
     }
-    optMatrix<prec_type> hvp(const optMatrix<prec_type>& vecs, const ProblemData<prec_type>& problem_data){
+    optMatrix<prec_type> hvp(const Eigen::Ref<const optMatrix<prec_type>>& vecs, ProblemData<prec_type>& problem_data){
         return problem_data.cones.hvp(scaling_point, vecs);
     }
 };

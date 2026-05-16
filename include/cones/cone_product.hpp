@@ -71,18 +71,18 @@ public:
     std::string coneName(){
         using enum ConeTypes;
         std::string name("Product of the following cones:\n");
-        auto add_name = [&name]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto add_name = [&name]<ConeTypes cone_id, typename U>(const auto& cone_params){
             name += cone_params.coneName() + "\n";
         };
         func_over_cones(add_name);
         return name;
     }
-    optVector<prec_type> grad(const optVector<prec_type>& p){
+    optVector<prec_type> grad(const Eigen::Ref<const optVector<prec_type>>& p){
         using enum ConeTypes;
         optVector<prec_type> out;
         out.resize(p.size());
         int cpos = 0;
-        auto cone_grad = [&p, &out, &cpos]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto cone_grad = [&p, &out, &cpos]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             out(Eigen::seqN(cpos, nvar)) = U::grad(p, cone_params);
             cpos += nvar;
@@ -90,12 +90,12 @@ public:
         func_over_cones(cone_grad);
         return out;
     }
-    optMatrix<prec_type> hvp(const optVector<prec_type>& p, const optMatrix<prec_type>& vecs){
+    optMatrix<prec_type> hvp(const Eigen::Ref<const optVector<prec_type>>& p, const Eigen::Ref<const optMatrix<prec_type>>& vecs){
         using enum ConeTypes;
         optMatrix<prec_type> out;
         out.resize(p.rows(), vecs.cols());
         int cpos = 0;
-        auto cone_hvp = [&p, &vecs, &out, &cpos]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto cone_hvp = [&p, &vecs, &out, &cpos]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             out(Eigen::seqN(cpos, nvar), Eigen::placeholders::all) = U::hvp(p, vecs, cone_params);
             cpos += nvar;
@@ -103,12 +103,12 @@ public:
         func_over_cones(cone_hvp);
         return out;
     }
-    optMatrix<prec_type> ihvp(const optVector<prec_type>& p, const optMatrix<prec_type>& vecs){
+    optMatrix<prec_type> ihvp(const Eigen::Ref<const optVector<prec_type>>& p, const Eigen::Ref<const optMatrix<prec_type>>& vecs){
         using enum ConeTypes;
         optMatrix<prec_type> out;
         out.resize(p.rows(), vecs.cols());
         int cpos = 0;
-        auto cone_ihvp = [&p, &vecs, &out, &cpos]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto cone_ihvp = [&p, &vecs, &out, &cpos]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             out(Eigen::seqN(cpos, nvar), Eigen::placeholders::all) = U::ihvp(p, vecs, cone_params);
             cpos += nvar;
@@ -117,13 +117,13 @@ public:
         return out;
     }
     // these methods are only implemented by symmetric cones
-    void get_nt_scaling(const optVector<prec_type>& s, const optVector<prec_type>& z, std::vector<optMatrix<prec_type>>& scaling_matrix, optVector<prec_type>& scaling_point, optVector<prec_type>& scaled_variable){
+    void get_nt_scaling(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z, std::vector<optMatrix<prec_type>>& scaling_matrix, Eigen::Ref<optVector<prec_type>> scaling_point, Eigen::Ref<optVector<prec_type>> scaled_variable){
         using enum ConeTypes;
         scaling_point.resize(s.rows());
         scaled_variable.resize(s.rows());
         int cpos = 0;
         int i = 0;
-        auto sym_cone_get_nt_scaling = [&s, &z, &scaling_matrix, &scaling_point, &scaled_variable, &cpos, &i]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto sym_cone_get_nt_scaling = [&s, &z, &scaling_matrix, &scaling_point, &scaled_variable, &cpos, &i]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             auto idxs = Eigen::seqN(cpos, nvar);
             scaling_matrix[i].resize(nvar, nvar);
@@ -133,11 +133,11 @@ public:
         };
         func_over_symmetric_cones(sym_cone_get_nt_scaling);
     }
-    prec_type get_nt_step_length(const optVector<prec_type>& s, const optVector<prec_type>& z, const optVector<prec_type>& scaled_variable){
+    prec_type get_nt_step_length(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z, const Eigen::Ref<const optVector<prec_type>>& scaled_variable){
         using enum ConeTypes;
         std::vector<prec_type> alphas;
         int cpos = 0;
-        auto sym_cone_get_nt_step_length = [&s, &z, &scaled_variable, &cpos, &alphas]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto sym_cone_get_nt_step_length = [&s, &z, &scaled_variable, &cpos, &alphas]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             alphas.push_back(U::get_nt_step_length(s, z, scaled_variable(Eigen::seqN(cpos, nvar)), cone_params));
             cpos += nvar;
@@ -145,13 +145,13 @@ public:
         func_over_symmetric_cones(sym_cone_get_nt_step_length);
         return *std::min_element(alphas.begin(), alphas.end());
     }
-    optVector<prec_type> get_nt_rhs_s(const optVector<prec_type>& s, const optVector<prec_type>& z, const std::vector<optMatrix<prec_type>> scaling_matrix, const optVector<prec_type>& scaled_variable, const prec_type centering_parameter, const prec_type mu){
+    optVector<prec_type> get_nt_rhs_s(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z, const std::vector<optMatrix<prec_type>>& scaling_matrix, const Eigen::Ref<const optVector<prec_type>>& scaled_variable, const prec_type centering_parameter, const prec_type mu){
         using enum ConeTypes;
         optVector<prec_type> out;
         out.resize(s.size());
         int cpos = 0;
         int i = 0;
-        auto sym_cone_get_nt_rhs_s = [&s, &z, &scaling_matrix, &scaled_variable, &centering_parameter, &mu, &out, &cpos, &i]<ConeTypes cone_id, typename U>(auto& cone_params){
+        auto sym_cone_get_nt_rhs_s = [&s, &z, &scaling_matrix, &scaled_variable, &centering_parameter, &mu, &out, &cpos, &i]<ConeTypes cone_id, typename U>(const auto& cone_params){
             int nvar = cone_params.numVariables();
             auto idxs = Eigen::seqN(cpos, nvar);
             out(idxs) = U::get_nt_rhs_s(s, z, scaling_matrix[i], scaled_variable(idxs), centering_parameter, mu, cone_params);

@@ -25,8 +25,14 @@ public:
     }
     // https://stackoverflow.com/questions/29492869/multiplication-operator-overloading
     ESDEState<prec_type> operator*(const prec_type& scalar) const{
-        return ESDEState<prec_type>{scalar * x, scalar * y, scalar * z,
-        scalar * tau, scalar * s, scalar * kap};
+        ESDEState<prec_type> out;
+        out.x = scalar * x;
+        out.y = scalar * y;
+        out.z = scalar * z;
+        out.tau = scalar * tau;
+        out.s = scalar * s;
+        out.kap = scalar * kap;
+        return out;
     }
     friend ESDEState<prec_type> operator*(prec_type scalar, const ESDEState<prec_type>& v) {
         return v * scalar;

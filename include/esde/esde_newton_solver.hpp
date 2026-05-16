@@ -1,5 +1,6 @@
 #ifndef ESDE_NEWTON_SOLVER_ESDE_H
 #define ESDE_NEWTON_SOLVER_ESDE_H
+#include <Eigen/Core>
 #include <Eigen/Cholesky>
 #include "common_typedefs.hpp"
 #include "problem_data.hpp"
@@ -22,14 +23,19 @@ public:
     /// @param problem_data The problem data.
     /// @param rhs The right hand side to solve for.
     /// @return The solution of the ESDE Newton system for the given rhs.
-    ESDEState<prec_type> solve_newton_system(const ESDEState<prec_type>& esde_state, const ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& rhs, bool recompute){
+    ESDEState<prec_type> solve_newton_system(const ESDEState<prec_type>& esde_state, ProblemData<prec_type>& problem_data, const ESDEState<prec_type>& rhs){
         // it is assumed that update_auxiliary_matrices has been called at some point before this
         // otherwise answers will be wrong
         // compute first and second RHSes
-        if(recompute = true)    update_auxiliary_matrices(problem_data);
-        ESDEState<prec_type> sub_rhs1{rhs.x, rhs.y, static_cast<SteppingStrategy&>(*this).hvp(rhs.z) + rhs.s};
+        ESDEState<prec_type> sub_rhs1;
+        sub_rhs1.x = rhs.x;
+        sub_rhs1.y = rhs.y;
+        sub_rhs1.z = static_cast<SteppingStrategy&>(*this).hvp(rhs.z, problem_data) + rhs.s;
         ESDEState<prec_type> b1 = solve_subsystem(problem_data, sub_rhs1);
-        ESDEState<prec_type> sub_rhs2{problem_data.c, problem_data.b, static_cast<SteppingStrategy&>(*this).hvp(problem_data.h, problem_data)};
+        ESDEState<prec_type> sub_rhs2;
+        sub_rhs2.x = problem_data.c;
+        sub_rhs2.y = problem_data.b;
+        sub_rhs2.z = static_cast<SteppingStrategy&>(*this).hvp(problem_data.h, problem_data);
         ESDEState<prec_type> b2 = solve_subsystem(problem_data, sub_rhs2);
         ESDEState<prec_type> out;
         out.tau = (rhs.tau + rhs.kap / esde_state.tau +

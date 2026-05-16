@@ -8,10 +8,12 @@ protected:
     static const bool is_symmetric = true;
     const int matrix_size;
     const bool is_complex;
+    
 public:
     PSDParameters(int matrix_size, bool is_complex): matrix_size(matrix_size), is_complex(is_complex){}
     static bool isSymmetric(){return is_symmetric;}
-    int barrierParameter() const{
+    int barrierParameter() const{return matrix_size;}
+    int numVariables() const{
         if(is_complex)  return matrix_size * (matrix_size + 1);
         else    return matrix_size * (matrix_size + 1) / 2;
     }
