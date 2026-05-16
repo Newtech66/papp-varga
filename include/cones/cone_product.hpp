@@ -73,7 +73,7 @@ public:
     std::string coneName(){
         using enum ConeTypes;
         std::string name("Product of the following cones:\n");
-        auto add_name = [&name]<ConeTypes cone_id, typename U>(const auto& cone){
+        auto add_name = [&name]<ConeTypes cone_id, typename U>(U& cone){
             name += cone.coneName() + "\n";
         };
         func_over_cones(add_name);
@@ -122,13 +122,13 @@ public:
     void update_nt_scaling(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z){
         using enum ConeTypes;
         int cpos = 0;
-        auto sym_cone_get_nt_scaling = [&s, &z, &cpos]<ConeTypes cone_id, typename U>(U& cone){
+        auto sym_cone_update_nt_scaling = [&s, &z, &cpos]<ConeTypes cone_id, typename U>(U& cone){
             int nvar = cone.numVariables();
             auto idxs = Eigen::seqN(cpos, nvar);
             cone.update_nt_scaling(s(idxs), z(idxs));
             cpos += nvar;
         };
-        func_over_symmetric_cones(sym_cone_get_nt_scaling);
+        func_over_symmetric_cones(sym_cone_update_nt_scaling);
     }
     prec_type get_nt_step_length(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z){
         using enum ConeTypes;
@@ -151,10 +151,38 @@ public:
         auto sym_cone_get_nt_rhs_s = [&s, &z, &centering_parameter, &mu, &out, &cpos]<ConeTypes cone_id, typename U>(U& cone){
             int nvar = cone.numVariables();
             auto idxs = Eigen::seqN(cpos, nvar);
-            out(idxs) = cone.get_nt_rhs_s(s, z, centering_parameter, mu, cone);
+            out(idxs) = cone.get_nt_rhs_s(s, z, centering_parameter, mu);
             cpos += nvar;
         };
         func_over_symmetric_cones(sym_cone_get_nt_rhs_s);
+        return out;
+    }
+    optVector<prec_type> get_nt_scaling_point(const int ssize){
+        using enum ConeTypes;
+        optVector<prec_type> out;
+        out.resize(ssize);
+        int cpos = 0;
+        auto sym_cone_get_nt_scaling_point = [&out, &cpos]<ConeTypes cone_id, typename U>(U& cone){
+            int nvar = cone.numVariables();
+            auto idxs = Eigen::seqN(cpos, nvar);
+            out(idxs) = cone.get_nt_scaling_point();
+            cpos += nvar;
+        };
+        func_over_symmetric_cones(sym_cone_get_nt_scaling_point);
+        return out;
+    }
+    optVector<prec_type> get_nt_scaled_variable(const int ssize){
+        using enum ConeTypes;
+        optVector<prec_type> out;
+        out.resize(ssize);
+        int cpos = 0;
+        auto sym_cone_get_nt_scaled_variable = [&out, &cpos]<ConeTypes cone_id, typename U>(U& cone){
+            int nvar = cone.numVariables();
+            auto idxs = Eigen::seqN(cpos, nvar);
+            out(idxs) = cone.get_nt_scaled_variable();
+            cpos += nvar;
+        };
+        func_over_symmetric_cones(sym_cone_get_nt_scaled_variable);
         return out;
     }
 };

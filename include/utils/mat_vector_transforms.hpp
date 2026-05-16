@@ -46,8 +46,8 @@ optMatrix<std::complex<prec_type>> vec_to_her_mat(const Eigen::Ref<const optVect
     }
     return out;
 }
-template<typename prec_type>
-optVector<prec_type> sym_mat_to_vec(const Eigen::Ref<const optMatrix<prec_type>>& mat, int mat_size){
+template<typename prec_type, typename T>
+optVector<prec_type> sym_mat_to_vec(const Eigen::MatrixBase<T>& mat, int mat_size){
     optVector<prec_type> out(mat_size * (mat_size + 1) / 2);
     for(int i = 0; i < mat_size; i++){
         out(i) = mat(i, i);
@@ -59,8 +59,8 @@ optVector<prec_type> sym_mat_to_vec(const Eigen::Ref<const optMatrix<prec_type>>
     }
     return out;
 }
-template<typename prec_type>
-optVector<prec_type> her_mat_to_vec(const Eigen::Ref<const optMatrix<std::complex<prec_type>>>& mat, int mat_size){
+template<typename prec_type, typename T>
+optVector<prec_type> her_mat_to_vec(const Eigen::MatrixBase<T>& mat, int mat_size){
     optVector<std::complex<prec_type>> out(mat_size * (mat_size + 1) / 2);
     for(int i = 0; i < mat_size; i++){
         out(i) = mat(i, i);
@@ -72,18 +72,6 @@ optVector<prec_type> her_mat_to_vec(const Eigen::Ref<const optMatrix<std::comple
     }
     return split<prec_type>(out);
 }
-template<typename prec_type>
-optVector<prec_type> her_mat_to_vec(const Eigen::Ref<const optMatrix<prec_type>>& mat, int mat_size){
-    optVector<std::complex<prec_type>> out(mat_size * (mat_size + 1) / 2);
-    for(int i = 0; i < mat_size; i++){
-        out(i) = mat(i, i);
-    }
-    for(int i = 0, idx = mat_size; i < mat_size; i++){
-        for(int j = 0; j < i; j++, idx++){
-            out(idx) = std::sqrt(2.0) * mat(i, j);
-        }
-    }
-    return split<prec_type>(out);
-}
+
 
 #endif

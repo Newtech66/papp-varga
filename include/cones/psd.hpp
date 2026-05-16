@@ -157,7 +157,25 @@ public:
         // for this cone, W^-1(-l + sig mu l^-1 - l @ (W^-1.T ds o W dz))
         // remember that W^-T s = vec(R^-1 mat(s) R^-T) and Wz = vec(R^T mat(z) R)
         // similarly W^-1 u = vec(R^-T mat(u) R^-1) (according to QICS anyways)
+        
         throw std::logic_error("No implementation of get_nt_rhs_s for positive-semidefinite cone!");
+    }
+    optVector<prec_type> get_nt_scaling_point(){
+        if constexpr(is_complex){
+            optMatrix<std::complex<prec_type>> tmp(matrix_size, matrix_size);
+            tmp.setZero();
+            tmp.diagonal() = lam;
+            return her_mat_to_vec<prec_type>(tmp, matrix_size);
+        }
+        else{
+            optMatrix<prec_type> tmp(matrix_size, matrix_size);
+            tmp.setZero();
+            tmp.diagonal() = lam;
+            return sym_mat_to_vec<prec_type>(tmp, matrix_size);
+        }
+    }
+    optVector<prec_type> get_nt_scaled_variable(){
+        return w;
     }
 };
 
