@@ -7,7 +7,7 @@
 #include "common_typedefs.hpp"
 
 template<typename prec_type>
-optVector<prec_type> split(const optVector<std::complex<prec_type>>& vec){
+optVector<prec_type> split(const Eigen::Ref<const optVector<std::complex<prec_type>>>& vec){
     optVector<prec_type> out(2 * vec.size());
     out << vec.real(), vec.imag();
     return out;
