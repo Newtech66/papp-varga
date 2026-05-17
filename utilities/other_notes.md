@@ -10,8 +10,16 @@
 - **TODO:** The current build seems to be performing slower than the original non-CMake build. I don't know why.
   The difference is 312 seconds for the new build vs 198 seconds for the old build. Which is just absurd.
   This is despite compiling with OpenMP and -DNDEBUG.
-- **~~TODO:~~** ~~Using the realView API (or in other words changing the output order of real and imaginary parts) breaks the~~
-  ~~solver. I don't know why.~~ It's because the problem (in the input files) is already split according to the specification.
-  So changing the split API mandates a change in the input files.
-- **TODO:** Halve the number of parameters in the cones with symmetric matrices by only keeping the lower (or upper half).
-  This may mandate a change in the problem input.
+
+## Things to do:
+
+Near future:
+- Init point
+- Termination criteria
+- Logging solver progress
+- CMake setup
+- Work out function signatures everywhere
+
+Intermediate future:
+- Skajaa-Ye (with IHVP avoidance from QICS)
+- Log perspective epigraph cone

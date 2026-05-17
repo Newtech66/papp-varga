@@ -27,39 +27,41 @@ $$
 We can mix real and complex cones. For complex cone variables, we split the real and imaginary parts as follows:
 
 $$
-split([x_1, x_2, \ldots, x_n]^{T}) =
+\text{split}([x_1, x_2, \ldots, x_n]^T) =
 \begin{bmatrix}
-Re([x_1, x_2, \ldots, x_n]^{T}) \\
-Im([x_1, x_2, \ldots, x_n]^{T})
+\text{Re}([x_1, x_2, \ldots, x_n]^T) \\ \text{Im}([x_1, x_2, \ldots, x_n]^T)
 \end{bmatrix}
 $$
 
-For real matrix cones, we vectorize matrices as follows:
+For real symmetric matrix cones, we vectorize matrices as follows:
 
 $$
-vec(X) =
-\begin{bmatrix}
-X_{11} \\
-\vdots \\
-X_{1n} \\
-X_{21} \\
-\vdots
+X = \begin{bmatrix}
+X_{11} & \cdots & X_{1n}\\
+\vdots & \ddots & \vdots\\
+X_{n1} & \cdots & X_{nn}
 \end{bmatrix}
 $$
 
-For complex matrix cones, we vectorize matrices as follows:
+$$
+\text{vec}(X) =
+\begin{bmatrix}
+X_{11} & X_{22} & \cdots & X_{nn} & \sqrt{2} X_{21} & \sqrt{2}X_{31} & \sqrt{2}X_{32} &\cdots
+\end{bmatrix}^T
+$$
+
+For complex Hermitian matrix cones, we vectorize matrices as follows:
 
 $$
-split(vec(X)) =
+\text{split}(\text{vec}(X)) =
 \begin{bmatrix}
-Re(vec(X)) \\
-Im(vec(X))
+\text{Re}(\text{vec}(X)) \\ \text{Im}(\text{vec}(X))
 \end{bmatrix}
 $$
 
 The primal variable vector $x$ and primal cost vector $c$ are real. You have to separately equate the real and complex parts of your linear equality constraints.
 
-You have to split/vectorize $G$ and $h$ appropriately. For example, if you have constraints like
+You have to split/vectorize your input matrices accordingly. For example, if you have constraints like
 
 $$
 \begin{gather*}
@@ -74,13 +76,12 @@ $$
 \begin{gather*}
 h =
 \begin{bmatrix}
-split(vec(F_0)) \\
-vec(A_0)
+\text{split}(\text{vec}(F_0)) \\ \text{vec}(A_0)
 \end{bmatrix} \\
 G = 
 \begin{bmatrix}
-split(vec(F_1)) & \cdots & split(vec(F_n)) \\
-vec(A_1) & \cdots & vec(A_n)
+\text{split}(\text{vec}(F_1)) & \cdots & \text{split}(\text{vec}(F_n)) \\
+\text{vec}(A_1) & \cdots & \text{vec}(A_n)
 \end{bmatrix}
 \end{gather*}
 $$
@@ -111,7 +112,7 @@ The input format of a file is given below. `<(type) name: description>` gives th
 The list of supported cones and the respective cone parameters are given below. The left hand side of an equality is the format of the cone specification. The right hand side is the cone description.
 
 - `REALPSD|COMPLEXPSD n`: Cone of symmetric/Hermitian $n \times n$ positive semidefinite matrices
-- `NONNEGORTHANT n`: Cone of non-negative vectors of length $n$
+- `NONNEGORTH n`: Cone of non-negative vectors of length $n$
 - `REALLPE|COMPLEXLPE n`: Cone of symmetric/Hermitian $n \times n$ positive semidefinite matrices $(T, X, Y)$ satisfying
 
 $$
@@ -123,7 +124,5 @@ $$
 The list of available solver algorithms are given below.
 
 - Nesterov-Todd (symmetric cones only)
-- Skajaa-Ye
-- Papp-Varga
-
-## Example:
+- Skajaa-Ye (not implemented)
+- Papp-Varga (not implemented)
