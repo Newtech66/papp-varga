@@ -44,8 +44,8 @@ private:
 public:
     NesterovTodd() = default;
     ESDEState<prec_type> step(const ESDEState<prec_type>& esde_state, ProblemData<prec_type>& problem_data){
-        this->update_auxiliary_matrices(problem_data);
         problem_data.cones.update_nt_scaling(esde_state.s, esde_state.z);
+        this->update_auxiliary_matrices(problem_data);
         optVector<prec_type> scaled_variable = problem_data.cones.get_nt_scaled_variable(problem_data.h.size());
         mu = (scaled_variable.dot(scaled_variable) + esde_state.tau * esde_state.kap) / (problem_data.cones.barrierParameter() + 1);
         ESDEState<prec_type> pred_dir = findPredictionDirection(esde_state, problem_data);

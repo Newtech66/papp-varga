@@ -10,7 +10,6 @@
 #include <Eigen/QR>
 #include "common_typedefs.hpp"
 #include "mat_vector_transforms.hpp"
-#include <stdexcept>
 
 template<typename prec_type, bool is_complex>
 class PSD{
@@ -29,6 +28,7 @@ protected:
     Eigen::BDCSVD<optMatrix<wtype>, Eigen::ComputeThinV> svd;
     Eigen::SelfAdjointEigenSolver<optMatrix<wtype>> eigsolver;
     Eigen::ColPivHouseholderQR<optMatrix<wtype>> qr;
+    Eigen::LDLT<optMatrix<wtype>> ldlt;
 
 public:
     PSD(int matrix_size): matrix_size(matrix_size){
@@ -76,12 +76,12 @@ public:
         optMatrix<prec_type> out;
         out.resize(q.rows(), q.cols());
         if constexpr(is_complex){
-            auto pinv = vec_to_her_mat<prec_type>(p, matrix_size).ldlt().solve(iden);
+            optMatrix<wtype> pinv = vec_to_her_mat<prec_type>(p, matrix_size).ldlt().solve(iden);
             for(int cidx = 0; cidx < q.cols(); cidx++){
                 out(all, cidx) = her_mat_to_vec<prec_type>(pinv * vec_to_her_mat<prec_type>(q(all, cidx), matrix_size) * pinv, matrix_size);
             }
         }else{
-            auto pinv = vec_to_sym_mat<prec_type>(p, matrix_size).ldlt().solve(iden);
+            optMatrix<wtype> pinv = vec_to_sym_mat<prec_type>(p, matrix_size).ldlt().solve(iden);
             for(int cidx = 0; cidx < q.cols(); cidx++){
                 out(all, cidx) = sym_mat_to_vec<prec_type>(pinv * vec_to_sym_mat<prec_type>(q(all, cidx), matrix_size) * pinv, matrix_size);
             }
@@ -116,7 +116,8 @@ public:
         if constexpr(is_complex){
             auto S = vec_to_her_mat<prec_type>(s, matrix_size);
             auto Z = vec_to_her_mat<prec_type>(z, matrix_size);
-            auto L1 = S.llt().matrixL();
+            optMatrix<wtype> L1 = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            L1.template triangularView<Eigen::Lower>() = S.llt().matrixL();
             svd.compute(Z.llt().solve(Z * L1));
             lam = svd.singularValues();
             R = L1 * svd.matrixV() * lam.cwiseSqrt().cwiseInverse().asDiagonal();
@@ -124,7 +125,8 @@ public:
         }else{
             auto S = vec_to_sym_mat<prec_type>(s, matrix_size);
             auto Z = vec_to_sym_mat<prec_type>(z, matrix_size);
-            auto L1 = S.llt().matrixL();
+            optMatrix<wtype> L1 = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            L1.template triangularView<Eigen::Lower>() = S.llt().matrixL();
             svd.compute(Z.llt().solve(Z * L1));
             lam = svd.singularValues();
             R = L1 * svd.matrixV() * lam.cwiseSqrt().cwiseInverse().asDiagonal();
@@ -134,8 +136,8 @@ public:
     prec_type get_nt_step_length(const Eigen::Ref<const optVector<prec_type>>& s, const Eigen::Ref<const optVector<prec_type>>& z){
         if constexpr(is_complex){
             auto lam_isqrt_diag = lam.cwiseInverse().cwiseSqrt().asDiagonal();
-            auto rhok = lam_isqrt_diag * vec_to_her_mat<prec_type>(s, matrix_size) * lam_isqrt_diag;
-            auto sigk = lam_isqrt_diag * vec_to_her_mat<prec_type>(z, matrix_size) * lam_isqrt_diag;
+            optMatrix<wtype> rhok = lam_isqrt_diag * vec_to_her_mat<prec_type>(s, matrix_size) * lam_isqrt_diag;
+            optMatrix<wtype> sigk = lam_isqrt_diag * vec_to_her_mat<prec_type>(z, matrix_size) * lam_isqrt_diag;
             eigsolver.compute(rhok);
             prec_type gams = eigsolver.eigenvalues()(0);
             eigsolver.compute(sigk);
@@ -143,8 +145,8 @@ public:
             return prec_type(1) / std::max({prec_type(0), -gams, -gamz});
         }else{
             auto lam_isqrt_diag = lam.cwiseInverse().cwiseSqrt().asDiagonal();
-            auto rhok = lam_isqrt_diag * vec_to_sym_mat<prec_type>(s, matrix_size) * lam_isqrt_diag;
-            auto sigk = lam_isqrt_diag * vec_to_sym_mat<prec_type>(z, matrix_size) * lam_isqrt_diag;
+            optMatrix<wtype> rhok = lam_isqrt_diag * vec_to_sym_mat<prec_type>(s, matrix_size) * lam_isqrt_diag;
+            optMatrix<wtype> sigk = lam_isqrt_diag * vec_to_sym_mat<prec_type>(z, matrix_size) * lam_isqrt_diag;
             eigsolver.compute(rhok);
             prec_type gams = eigsolver.eigenvalues()(0);
             eigsolver.compute(sigk);
@@ -157,8 +159,49 @@ public:
         // for this cone, W^-1(-l + sig mu l^-1 - l @ (W^-1.T ds o W dz))
         // remember that W^-T s = vec(R^-1 mat(s) R^-T) and Wz = vec(R^T mat(z) R)
         // similarly W^-1 u = vec(R^-T mat(u) R^-1) (according to QICS anyways)
-        
-        throw std::logic_error("No implementation of get_nt_rhs_s for positive-semidefinite cone!");
+        // W^-1.T ds o W dz = 1/2 vec(mat(W^-1.T ds) mat(W dz) + mat(W dz) mat(W^-1.T ds))
+        //                  = 1/2 vec(R^-1 mat(ds) R^-T R^T mat(dz) R + R^T mat(dz) R R^-1 mat(ds) R^-T)
+        //                  = 1/2 vec(R^-1 mat(ds) mat(dz) R + R^T mat(dz) mat(ds) R^-T)
+        // l @ u = vec(mat(u) $ Gam)
+        // Gam = 2 / (Lam_ii + Lam_jj)
+        // R^-T mat(u) R^-1 = R (R^T R)^-1 mat(u) R^-1 = R mat(w)^-1 mat(u) R^-1 = R M R^-1
+        //                  = R (R^-T M^T)^T = R (R mat(w)^-1 M^T)^T = R (R P)^T = R P^T R^T
+        // or,
+        // R^-T U R^-1 = M R^-1 = (R^-T M)^T = P^T
+        // the first method uses 2 ldlt solves and the second method uses 2 qr solves
+        if constexpr(is_complex){
+            qr.compute(R);
+            optMatrix<wtype> Q = qr.solve(vec_to_her_mat<prec_type>(s, matrix_size) * vec_to_her_mat<prec_type>(z, matrix_size)) * R;
+            Q += Q.conjugate().eval();
+            optMatrix<prec_type> Gam = lam.replicate(1, lam.rows());
+            Gam += Gam.transpose().eval();
+            Q = Q.cwiseQuotient(Gam).eval();
+            optMatrix<wtype> Lam = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            optMatrix<wtype> Lami = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            Lam.diagonal() = lam;
+            Lami.diagonal() = lam.cwiseInverse();
+            optMatrix<wtype> U = -Lam + centering_parameter * mu * Lami - Q;
+            ldlt.compute(vec_to_her_mat<prec_type>(w, matrix_size));
+            optMatrix<wtype> M = ldlt.solve(U);
+            optMatrix<wtype> P = ldlt.solve(M.conjugate());
+            return her_mat_to_vec<prec_type>(R * P.conjugate() * R.conjugate(), matrix_size);
+        }else{
+            qr.compute(R);
+            optMatrix<wtype> Q = qr.solve(vec_to_sym_mat<prec_type>(s, matrix_size) * vec_to_sym_mat<prec_type>(z, matrix_size)) * R;
+            Q += Q.conjugate().eval();
+            optMatrix<prec_type> Gam = lam.replicate(1, lam.rows());
+            Gam += Gam.transpose().eval();
+            Q = Q.cwiseQuotient(Gam).eval();
+            optMatrix<wtype> Lam = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            optMatrix<wtype> Lami = optMatrix<wtype>::Zero(matrix_size, matrix_size);
+            Lam.diagonal() = lam;
+            Lami.diagonal() = lam.cwiseInverse();
+            optMatrix<wtype> U = -Lam + centering_parameter * mu * Lami - Q;
+            ldlt.compute(vec_to_sym_mat<prec_type>(w, matrix_size));
+            optMatrix<wtype> M = ldlt.solve(U);
+            optMatrix<wtype> P = ldlt.solve(M.conjugate());
+            return sym_mat_to_vec<prec_type>(R * P.conjugate() * R.conjugate(), matrix_size);
+        }
     }
     optVector<prec_type> get_nt_scaling_point(){
         if constexpr(is_complex){

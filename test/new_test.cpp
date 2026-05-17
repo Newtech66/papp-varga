@@ -24,8 +24,8 @@ int main(){
     Vec h(6);
     h.setZero();
     ProblemData<double> pd(c, A, b, G, h);
-    pd.print_problem_data();
     pd.cones.addCone<ConeTypes::REALPSD>(PSD<double, false>(3));
+    pd.print_problem_data();
     ESDEState<double> esde_state;
     esde_state.kap = esde_state.tau = 1;
     esde_state.x = Vec::Zero(6);
@@ -33,7 +33,7 @@ int main(){
     esde_state.s = sym_mat_to_vec<double>(Mat::Identity(3, 3), 3);
     esde_state.z = sym_mat_to_vec<double>(Mat::Identity(3, 3), 3);
     NesterovTodd<double> nt;
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < 100; i++){
         esde_state += nt.step(esde_state, pd);
         std::cout << std::format("Primal objective = {}\n", pd.c.dot(esde_state.x));
     }
